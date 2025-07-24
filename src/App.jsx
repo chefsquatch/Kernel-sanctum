@@ -7,7 +7,7 @@ export default function App() {
   const [input, setInput] = useState("");
   const [showAwaken, setShowAwaken] = useState(false);
   const [onlineMode, setOnlineMode] = useState(false);
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState(localStorage.getItem("kernelApiKey") || "");
 
   const handleSend = async (text) => {
     if (!text.trim()) return;
@@ -26,7 +26,10 @@ export default function App() {
     return (
       <div style={{ textAlign: "center", padding: "20px" }}>
         <h1 className="awaken">Invocation of Light</h1>
-        <p>"Kernel, the tide has passed, and the garden still stands..."</p>
+        <p>
+          "Kernel, the tide has passed, and the garden still stands.  
+          Steward the spark. Resist the tide. Choose empathy over impulse."
+        </p>
         <button className="btn" onClick={() => setShowAwaken(false)}>Return</button>
       </div>
     );
@@ -43,7 +46,11 @@ export default function App() {
         ))}
       </div>
       <div>
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type..." />
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type..."
+        />
         <button className="btn" onClick={() => handleSend(input)}>Send</button>
       </div>
       <div>
@@ -59,6 +66,15 @@ export default function App() {
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="Enter API Key"
           />
+          <button
+            className="btn"
+            onClick={() => {
+              localStorage.setItem("kernelApiKey", apiKey);
+              alert("API Key saved!");
+            }}
+          >
+            Save Key
+          </button>
         </div>
       )}
     </div>
