@@ -5,11 +5,11 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   optimizeDeps: {
-    exclude: ['@xenova/transformers']
+    exclude: ['@xenova/transformers', 'pdfjs-dist']
   },
   build: {
     rollupOptions: {
-      external: ['@xenova/transformers']
+      external: ['@xenova/transformers', 'pdfjs-dist']
     }
   }
 });
