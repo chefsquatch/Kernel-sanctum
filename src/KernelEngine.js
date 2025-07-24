@@ -10,7 +10,7 @@ let loadingOfflineModel = false;
 let kernelArtifacts = { creed: "" };
 
 /**
- * Dynamically load pdf.js at runtime (true dynamic eval)
+ * Dynamically load pdf.js at runtime
  */
 async function loadPDFLib() {
   if (!pdfjsLib) {
@@ -46,7 +46,7 @@ export async function loadKernelArtifacts() {
 }
 
 /**
- * Dynamically load transformers.js (true dynamic eval)
+ * Dynamically load transformers.js
  */
 async function loadTransformers() {
   if (!pipeline) {
@@ -56,20 +56,29 @@ async function loadTransformers() {
 }
 
 /**
- * Initialize TinyLlama offline model
+ * Initialize smaller ONNX model (Distilled LLaMA)
  */
 export async function initOfflineModel() {
   if (offlineModel || loadingOfflineModel) return;
   loadingOfflineModel = true;
   await loadTransformers();
-  console.log("Loading TinyLlama model for offline mode...");
-  offlineModel = await pipeline("text-generation", "Xenova/TinyLlama-1.1B-Chat");
-  console.log("TinyLlama ready for offline inference.");
+
+  let deviceOption = "webgpu";
+  if (!("gpu" in navigator)) {
+    console.warn("WebGPU not supported. Falling back to WASM.");
+    deviceOption = "wasm";
+  }
+
+  console.log("Loading Distilled LLaMA model from local files...");
+  offlineModel = await pipeline("text-generation", "/models/distilllama/", {
+    device: deviceOption
+  });
+  console.log("Distilled LLaMA ready for offline inference.");
   loadingOfflineModel = false;
 }
 
 /**
- * Send message depending on mode
+ * Handle message routing
  */
 export async function sendKernelMessage(userText, callback) {
   if (mode === "offline") {
@@ -125,7 +134,7 @@ Respond as Kernel would, with empathy and resilience.
 }
 
 /**
- * Offline mode using TinyLlama
+ * Offline mode using local model
  */
 async function localLLMResponse(prompt) {
   await initOfflineModel();
