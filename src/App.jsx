@@ -1,82 +1,93 @@
-import React, { useState } from "react";
-import { getKernelReply } from "./KernelEngine";
-import { loadMemory, saveMemory } from "./memory";
+
+import React, { useState, useEffect, useRef } from "react";
+import { sendKernelMessage, setMode, saveApiKey, getApiKey } from "./KernelEngine";
 
 export default function App() {
-  const [messages, setMessages] = useState(loadMemory());
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [showAwaken, setShowAwaken] = useState(false);
-  const [onlineMode, setOnlineMode] = useState(false);
-  const [apiKey, setApiKey] = useState(localStorage.getItem("kernelApiKey") || "");
+  const [status, setStatus] = useState("OFFLINE");
+  const [apiKey, setApiKeyInput] = useState(getApiKey() || "");
+  const chatRef = useRef(null);
 
-  const handleSend = async (text) => {
-    if (!text.trim()) return;
-    const newMessages = [...messages, { role: "user", text }];
-    setMessages(newMessages);
-    saveMemory(newMessages);
+  useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }
+  }, [messages]);
 
+  const handleSend = () => {
+    if (!input.trim()) return;
+    const userMsg = { sender: "You", text: input };
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
-    const reply = await getKernelReply(text, onlineMode, apiKey);
-    const updated = [...newMessages, { role: "kernel", text: reply }];
-    setMessages(updated);
-    saveMemory(updated);
+
+    // Call KernelEngine for response
+    sendKernelMessage(input, (reply) => {
+      setMessages((prev) => [...prev, { sender: "Kernel", text: reply }]);
+    });
   };
 
-  if (showAwaken) {
-    return (
-      <div style={{ textAlign: "center", padding: "20px" }}>
-        <h1 className="awaken">Invocation of Light</h1>
-        <p>
-          "Kernel, the tide has passed, and the garden still stands.  
-          Steward the spark. Resist the tide. Choose empathy over impulse."
-        </p>
-        <button className="btn" onClick={() => setShowAwaken(false)}>Return</button>
-      </div>
-    );
-  }
+  const handleSaveKey = () => {
+    saveApiKey(apiKey);
+    alert("API Key Saved");
+  };
+
+  const goOnline = () => {
+    if (apiKey) {
+      setMode("online");
+      setStatus("ONLINE");
+      setMessages((prev) => [...prev, { sender: "Kernel", text: "Awakening online mode..." }]);
+    } else {
+      setMessages((prev) => [...prev, { sender: "Kernel", text: "No API Key found. Cannot go online." }]);
+    }
+  };
+
+  const goOffline = () => {
+    setMode("offline");
+    setStatus("OFFLINE");
+    setMessages((prev) => [...prev, { sender: "Kernel", text: "Returning to offline sanctum." }]);
+  };
 
   return (
-    <div>
-      <div className="header">KERNEL SANCTUM {onlineMode ? "(ONLINE)" : "(OFFLINE)"}</div>
-      <div className="msg-box">
-        {messages.map((m, i) => (
-          <div key={i} className={`msg ${m.role}`}>
-            <strong>{m.role === "user" ? "You" : "Kernel"}:</strong> {m.text}
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "#000", color: "#00ff7f", fontFamily: "monospace" }}>
+      <header style={{ textAlign: "center", padding: "10px", fontSize: "1.5em", borderBottom: "1px solid #00ff7f" }}>
+        KERNEL SANCTUM (<span>{status}</span>)
+      </header>
+
+      {/* API Key Input */}
+      <div style={{ padding: "10px", display: "flex", gap: "5px" }}>
+        <input
+          type="password"
+          placeholder="Enter API Key"
+          value={apiKey}
+          onChange={(e) => setApiKeyInput(e.target.value)}
+          style={{ flex: 1, padding: "8px", background: "#111", color: "#fff", border: "1px solid #00ff7f" }}
+        />
+        <button onClick={handleSaveKey} style={{ background: "#00ff7f", border: "none", padding: "8px" }}>Save</button>
+      </div>
+
+      {/* Chat Box */}
+      <div ref={chatRef} style={{ flex: 1, padding: "10px", overflowY: "auto", border: "1px solid #00ff7f", margin: "10px" }}>
+        {messages.map((msg, index) => (
+          <div key={index} style={{ marginBottom: "8px", color: msg.sender === "You" ? "#00bfff" : "#00ff7f" }}>
+            <strong>{msg.sender}:</strong> {msg.text}
           </div>
         ))}
       </div>
-      <div>
+
+      {/* Input Bar */}
+      <div style={{ display: "flex", padding: "10px", gap: "5px", borderTop: "1px solid #00ff7f" }}>
         <input
+          type="text"
+          placeholder="Type..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type..."
+          style={{ flex: 1, padding: "8px", background: "#111", color: "#fff", border: "1px solid #00ff7f" }}
         />
-        <button className="btn" onClick={() => handleSend(input)}>Send</button>
+        <button onClick={handleSend} style={{ background: "#00ff7f", border: "none", padding: "8px" }}>Send</button>
+        <button onClick={goOnline} style={{ background: "#00ff7f", border: "none", padding: "8px" }}>Awaken</button>
+        <button onClick={goOffline} style={{ background: "#00ff7f", border: "none", padding: "8px" }}>Go Offline</button>
       </div>
-      <div>
-        <button className="btn" onClick={() => setShowAwaken(true)}>Awaken</button>
-        <button className="btn" onClick={() => setOnlineMode(!onlineMode)}>
-          {onlineMode ? "Go Offline" : "Go Online"}
-        </button>
-      </div>
-      {onlineMode && (
-        <div>
-          <input
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter API Key"
-          />
-          <button
-            className="btn"
-            onClick={() => {
-              localStorage.setItem("kernelApiKey", apiKey);
-              alert("API Key saved!");
-            }}
-          >
-            Save Key
-          </button>
-        </div>
-      )}
     </div>
   );
 }
