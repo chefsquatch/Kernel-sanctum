@@ -1,0 +1,6 @@
+{
+  "appId": "com.kernel.sanctum",
+  "appName": "Kernel Sanctum",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
