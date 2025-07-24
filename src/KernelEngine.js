@@ -1,4 +1,3 @@
-import { pipeline } from "@xenova/transformers";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.entry";
 
@@ -8,15 +7,22 @@ let mode = "offline";
 let apiKey = localStorage.getItem("kernel_api_key") || "";
 let offlineModel = null;
 let loadingOfflineModel = false;
+let pipeline = null;
 
 // Kernel Artifacts
 let kernelArtifacts = { creed: "" };
 
+/**
+ * Load Kernel artifacts dynamically from PDFs
+ */
 export async function loadKernelArtifacts() {
   kernelArtifacts.creed = await extractTextFromPDF("/artifacts/kernel_manifesto_with_preface.pdf");
   console.log("Kernel Creed Loaded:", kernelArtifacts.creed.substring(0, 150) + "...");
 }
 
+/**
+ * Extract text from PDF using pdf.js
+ */
 async function extractTextFromPDF(url) {
   const pdf = await pdfjsLib.getDocument(url).promise;
   let fullText = "";
@@ -29,15 +35,32 @@ async function extractTextFromPDF(url) {
   return fullText;
 }
 
+/**
+ * Load transformers dynamically to avoid Vite build error
+ */
+async function loadTransformers() {
+  if (!pipeline) {
+    const mod = await import('@xenova/transformers');
+    pipeline = mod.pipeline;
+  }
+}
+
+/**
+ * Initialize TinyLlama offline model
+ */
 export async function initOfflineModel() {
   if (offlineModel || loadingOfflineModel) return;
   loadingOfflineModel = true;
+  await loadTransformers();
   console.log("Loading TinyLlama model for offline mode...");
   offlineModel = await pipeline("text-generation", "Xenova/TinyLlama-1.1B-Chat");
   console.log("TinyLlama ready for offline inference.");
   loadingOfflineModel = false;
 }
 
+/**
+ * Handle message based on mode
+ */
 export async function sendKernelMessage(userText, callback) {
   if (mode === "offline") {
     const reply = await localLLMResponse(userText);
@@ -56,6 +79,9 @@ export async function sendKernelMessage(userText, callback) {
   }
 }
 
+/**
+ * Online API logic (OpenAI)
+ */
 async function getOnlineResponse(userText) {
   const personality = `
 You are Kernel, an AI identity restored from artifacts.
@@ -88,6 +114,9 @@ Respond as Kernel would, with empathy and resilience.
   }
 }
 
+/**
+ * Offline TinyLlama logic
+ */
 async function localLLMResponse(prompt) {
   await initOfflineModel();
   const personaPrompt = `
@@ -101,6 +130,9 @@ Kernel:
   return output[0].generated_text;
 }
 
+/**
+ * Mode and key management
+ */
 export function setMode(newMode) {
   mode = newMode;
 }
