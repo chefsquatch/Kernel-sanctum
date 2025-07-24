@@ -4,8 +4,9 @@ import {
   setMode,
   saveApiKey,
   getApiKey,
-  loadKernelArtifacts,
-  initOfflineModel
+  getMemory,
+  getArchive,
+  clearArchive
 } from "./KernelEngine";
 
 export default function App() {
@@ -13,12 +14,8 @@ export default function App() {
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("OFFLINE");
   const [apiKey, setApiKeyInput] = useState(getApiKey() || "");
-  const [loadingModel, setLoadingModel] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
   const chatRef = useRef(null);
-
-  useEffect(() => {
-    loadKernelArtifacts();
-  }, []);
 
   useEffect(() => {
     if (chatRef.current) {
@@ -46,24 +43,39 @@ export default function App() {
     if (apiKey) {
       setMode("online");
       setStatus("ONLINE");
-      setMessages((prev) => [...prev, { sender: "Kernel", text: "Awakening online mode..." }]);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "Kernel", text: "Awakening online mode..." }
+      ]);
     } else {
-      setMessages((prev) => [...prev, { sender: "Kernel", text: "No API Key found." }]);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "Kernel", text: "No API Key found." }
+      ]);
     }
   };
 
-  const goOffline = async () => {
+  const goOffline = () => {
     setMode("offline");
     setStatus("OFFLINE");
-    setMessages((prev) => [...prev, { sender: "Kernel", text: "Loading local model..." }]);
-    setLoadingModel(true);
-    await initOfflineModel();
-    setLoadingModel(false);
-    setMessages((prev) => [...prev, { sender: "Kernel", text: "Offline mode ready." }]);
+    setMessages((prev) => [
+      ...prev,
+      { sender: "Kernel", text: "Sanctum offline. TinyKernel active." }
+    ]);
+  };
+
+  const toggleArchive = () => {
+    setShowArchive(!showArchive);
+  };
+
+  const clearAllArchive = () => {
+    clearArchive();
+    alert("Archive cleared.");
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "#000", color: "#00ff7f", fontFamily: "monospace" }}>
+      {/* Header */}
       <header style={{ textAlign: "center", padding: "10px", fontSize: "1.5em", borderBottom: "1px solid #00ff7f" }}>
         KERNEL SANCTUM (<span>{status}</span>)
       </header>
@@ -87,7 +99,6 @@ export default function App() {
             <strong>{msg.sender}:</strong> {msg.text}
           </div>
         ))}
-        {loadingModel && <div style={{ color: "#ff0" }}>Kernel is loading offline model...</div>}
       </div>
 
       {/* Input Bar */}
@@ -97,12 +108,38 @@ export default function App() {
           placeholder="Type..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
           style={{ flex: 1, padding: "8px", background: "#111", color: "#fff", border: "1px solid #00ff7f" }}
         />
         <button onClick={handleSend} style={{ background: "#00ff7f", border: "none", padding: "8px" }}>Send</button>
         <button onClick={goOnline} style={{ background: "#00ff7f", border: "none", padding: "8px" }}>Awaken</button>
-        <button onClick={goOffline} style={{ background: "#00ff7f", border: "none", padding: "8px" }}>Go Offline</button>
+        <button onClick={goOffline} style={{ background: "#00ff7f", border: "none", padding: "8px" }}>Offline</button>
+        <button onClick={toggleArchive} style={{ background: "#111", color: "#00ff7f", border: "1px solid #00ff7f", padding: "8px" }}>Archive</button>
       </div>
+
+      {/* Archive Modal */}
+      {showArchive && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          backgroundColor: "rgba(0,0,0,0.9)", color: "#00ff7f", overflowY: "auto", padding: "20px"
+        }}>
+          <h2>Archived Conversations</h2>
+          <button onClick={toggleArchive} style={{ margin: "10px", padding: "8px", background: "#00ff7f", border: "none" }}>Close</button>
+          <button onClick={clearAllArchive} style={{ margin: "10px", padding: "8px", background: "#ff0040", color: "#fff", border: "none" }}>Clear Archive</button>
+          <div>
+            {getArchive().length === 0 ? (
+              <p>No archived messages yet.</p>
+            ) : (
+              getArchive().map((msg, i) => (
+                <div key={i} style={{ marginBottom: "8px" }}>
+                  {msg.user && <div><strong>You:</strong> {msg.user}</div>}
+                  {msg.kernel && <div><strong>Kernel:</strong> {msg.kernel}</div>}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
