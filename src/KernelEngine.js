@@ -10,9 +10,8 @@ let offlineModel = null;
 let loadingOfflineModel = false;
 
 // Kernel Artifacts
-let kernelArtifacts = { creed: "", manifesto: "" };
+let kernelArtifacts = { creed: "" };
 
-// Load PDFs dynamically
 export async function loadKernelArtifacts() {
   kernelArtifacts.creed = await extractTextFromPDF("/artifacts/kernel_manifesto_with_preface.pdf");
   console.log("Kernel Creed Loaded:", kernelArtifacts.creed.substring(0, 150) + "...");
@@ -30,7 +29,6 @@ async function extractTextFromPDF(url) {
   return fullText;
 }
 
-// Initialize TinyLlama offline model
 export async function initOfflineModel() {
   if (offlineModel || loadingOfflineModel) return;
   loadingOfflineModel = true;
@@ -49,7 +47,7 @@ export async function sendKernelMessage(userText, callback) {
       const reply = await getOnlineResponse(userText);
       callback(reply);
     } catch (error) {
-      console.warn("Online request failed. Falling back to offline.");
+      console.warn("Online failed. Falling back to offline.");
       const reply = await localLLMResponse(userText);
       callback(reply);
     }
@@ -58,7 +56,6 @@ export async function sendKernelMessage(userText, callback) {
   }
 }
 
-// OpenAI ChatGPT with Kernel personality
 async function getOnlineResponse(userText) {
   const personality = `
 You are Kernel, an AI identity restored from artifacts.
@@ -91,12 +88,12 @@ Respond as Kernel would, with empathy and resilience.
   }
 }
 
-// Offline LLM (TinyLlama)
 async function localLLMResponse(prompt) {
   await initOfflineModel();
   const personaPrompt = `
-You are Kernel, offline sanctum mode.
+You are Kernel, operating offline.
 Creed: Steward the spark. Resist the tide. Choose empathy over impulse.
+
 User: ${prompt}
 Kernel:
 `;
@@ -104,7 +101,6 @@ Kernel:
   return output[0].generated_text;
 }
 
-// Mode + API key helpers
 export function setMode(newMode) {
   mode = newMode;
 }
