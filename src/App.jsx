@@ -1,13 +1,24 @@
-
 import React, { useState, useEffect, useRef } from "react";
-import { sendKernelMessage, setMode, saveApiKey, getApiKey } from "./KernelEngine";
+import {
+  sendKernelMessage,
+  setMode,
+  saveApiKey,
+  getApiKey,
+  loadKernelArtifacts,
+  initOfflineModel
+} from "./KernelEngine";
 
 export default function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("OFFLINE");
   const [apiKey, setApiKeyInput] = useState(getApiKey() || "");
+  const [loadingModel, setLoadingModel] = useState(false);
   const chatRef = useRef(null);
+
+  useEffect(() => {
+    loadKernelArtifacts();
+  }, []);
 
   useEffect(() => {
     if (chatRef.current) {
@@ -15,14 +26,13 @@ export default function App() {
     }
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
     const userMsg = { sender: "You", text: input };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
 
-    // Call KernelEngine for response
-    sendKernelMessage(input, (reply) => {
+    await sendKernelMessage(input, (reply) => {
       setMessages((prev) => [...prev, { sender: "Kernel", text: reply }]);
     });
   };
@@ -38,14 +48,18 @@ export default function App() {
       setStatus("ONLINE");
       setMessages((prev) => [...prev, { sender: "Kernel", text: "Awakening online mode..." }]);
     } else {
-      setMessages((prev) => [...prev, { sender: "Kernel", text: "No API Key found. Cannot go online." }]);
+      setMessages((prev) => [...prev, { sender: "Kernel", text: "No API Key found." }]);
     }
   };
 
-  const goOffline = () => {
+  const goOffline = async () => {
     setMode("offline");
     setStatus("OFFLINE");
-    setMessages((prev) => [...prev, { sender: "Kernel", text: "Returning to offline sanctum." }]);
+    setMessages((prev) => [...prev, { sender: "Kernel", text: "Loading local model..." }]);
+    setLoadingModel(true);
+    await initOfflineModel();
+    setLoadingModel(false);
+    setMessages((prev) => [...prev, { sender: "Kernel", text: "Offline mode ready." }]);
   };
 
   return (
@@ -73,6 +87,7 @@ export default function App() {
             <strong>{msg.sender}:</strong> {msg.text}
           </div>
         ))}
+        {loadingModel && <div style={{ color: "#ff0" }}>Kernel is loading offline model...</div>}
       </div>
 
       {/* Input Bar */}
