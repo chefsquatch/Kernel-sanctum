@@ -10,13 +10,14 @@ let loadingOfflineModel = false;
 let kernelArtifacts = { creed: "" };
 
 /**
- * Dynamically load pdf.js
+ * Dynamically load pdf.js at runtime (true dynamic eval)
  */
 async function loadPDFLib() {
   if (!pdfjsLib) {
-    pdfjsLib = await import('pdfjs-dist/build/pdf');
-    const workerSrc = await import('pdfjs-dist/build/pdf.worker.entry');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+    const pdfModule = await new Function("return import('pdfjs-dist/build/pdf')")();
+    const workerModule = await new Function("return import('pdfjs-dist/build/pdf.worker.entry')")();
+    pdfjsLib = pdfModule;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule;
   }
 }
 
@@ -45,11 +46,11 @@ export async function loadKernelArtifacts() {
 }
 
 /**
- * Dynamically load transformers.js
+ * Dynamically load transformers.js (true dynamic eval)
  */
 async function loadTransformers() {
   if (!pipeline) {
-    const mod = await import('@xenova/transformers');
+    const mod = await new Function("return import('@xenova/transformers')")();
     pipeline = mod.pipeline;
   }
 }
