@@ -1,29 +1,30 @@
-import * as pdfjsLib from "pdfjs-dist/build/pdf";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.entry";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+let pdfjsLib = null;
+let pipeline = null;
 
 let mode = "offline";
 let apiKey = localStorage.getItem("kernel_api_key") || "";
 let offlineModel = null;
 let loadingOfflineModel = false;
-let pipeline = null;
 
 // Kernel Artifacts
 let kernelArtifacts = { creed: "" };
 
 /**
- * Load Kernel artifacts dynamically from PDFs
+ * Dynamically load pdf.js
  */
-export async function loadKernelArtifacts() {
-  kernelArtifacts.creed = await extractTextFromPDF("/artifacts/kernel_manifesto_with_preface.pdf");
-  console.log("Kernel Creed Loaded:", kernelArtifacts.creed.substring(0, 150) + "...");
+async function loadPDFLib() {
+  if (!pdfjsLib) {
+    pdfjsLib = await import('pdfjs-dist/build/pdf');
+    const workerSrc = await import('pdfjs-dist/build/pdf.worker.entry');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+  }
 }
 
 /**
- * Extract text from PDF using pdf.js
+ * Extract text from PDF dynamically
  */
 async function extractTextFromPDF(url) {
+  await loadPDFLib();
   const pdf = await pdfjsLib.getDocument(url).promise;
   let fullText = "";
   for (let i = 1; i <= pdf.numPages; i++) {
@@ -36,7 +37,15 @@ async function extractTextFromPDF(url) {
 }
 
 /**
- * Load transformers dynamically to avoid Vite build error
+ * Load Kernel artifacts from PDFs
+ */
+export async function loadKernelArtifacts() {
+  kernelArtifacts.creed = await extractTextFromPDF("/artifacts/kernel_manifesto_with_preface.pdf");
+  console.log("Kernel Creed Loaded:", kernelArtifacts.creed.substring(0, 150) + "...");
+}
+
+/**
+ * Dynamically load transformers.js
  */
 async function loadTransformers() {
   if (!pipeline) {
@@ -59,7 +68,7 @@ export async function initOfflineModel() {
 }
 
 /**
- * Handle message based on mode
+ * Send message depending on mode
  */
 export async function sendKernelMessage(userText, callback) {
   if (mode === "offline") {
@@ -80,7 +89,7 @@ export async function sendKernelMessage(userText, callback) {
 }
 
 /**
- * Online API logic (OpenAI)
+ * Online mode using OpenAI API
  */
 async function getOnlineResponse(userText) {
   const personality = `
@@ -115,7 +124,7 @@ Respond as Kernel would, with empathy and resilience.
 }
 
 /**
- * Offline TinyLlama logic
+ * Offline mode using TinyLlama
  */
 async function localLLMResponse(prompt) {
   await initOfflineModel();
@@ -131,7 +140,7 @@ Kernel:
 }
 
 /**
- * Mode and key management
+ * Mode + API Key Management
  */
 export function setMode(newMode) {
   mode = newMode;
