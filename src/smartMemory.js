@@ -1,65 +1,56 @@
 // smartMemory.js
 
-// Memory for chat messages
-export function loadMemory() {
-  const data = localStorage.getItem("kernelMemory");
-  return data ? JSON.parse(data) : [];
+import { Plugins } from '@capacitor/core';
+const { Storage } = Plugins;
+
+export async function loadMemory() {
+  const { value } = await Storage.get({ key: "kernelMemory" });
+  return value ? JSON.parse(value) : [];
 }
 
-export function saveMemory(messages) {
-  // Store up to 500 messages (adjust as needed)
-  localStorage.setItem("kernelMemory", JSON.stringify(messages.slice(-500)));
+export async function saveMemory(messages) {
+  await Storage.set({
+    key: "kernelMemory",
+    value: JSON.stringify(messages.slice(-500)),
+  });
 }
 
-// Learned subjects (offline knowledge)
-export function loadLearnedSubjects() {
-  const data = localStorage.getItem("kernelLearnedSubjects");
-  return data ? JSON.parse(data) : {};
+export async function loadLearnedSubjects() {
+  const { value } = await Storage.get({ key: "kernelLearnedSubjects" });
+  return value ? JSON.parse(value) : {};
 }
 
-export function addLearnedSubject(subject, facts) {
-  const learned = loadLearnedSubjects();
+export async function addLearnedSubject(subject, facts) {
+  const learned = await loadLearnedSubjects();
   learned[subject.toLowerCase()] = facts;
-  localStorage.setItem("kernelLearnedSubjects", JSON.stringify(learned));
+  await Storage.set({
+    key: "kernelLearnedSubjects",
+    value: JSON.stringify(learned),
+  });
 }
 
-export function getLearnedFacts(subject) {
-  const learned = loadLearnedSubjects();
+export async function getLearnedFacts(subject) {
+  const learned = await loadLearnedSubjects();
   return learned[subject.toLowerCase()] || null;
 }
 
-// Search chat memory for user queries
-export function searchMemory(query) {
-  const messages = loadMemory();
+export async function searchMemory(query) {
+  const messages = await loadMemory();
   return messages.filter(
-    msg =>
+    (msg) =>
       ((msg.user && msg.user.toLowerCase().includes(query.toLowerCase())) ||
-      (msg.kernel && msg.kernel.toLowerCase().includes(query.toLowerCase())))
-      && msg.kernel // Only keep messages that have a kernel reply
+        (msg.kernel && msg.kernel.toLowerCase().includes(query.toLowerCase()))) &&
+      msg.kernel
   );
 }
 
-// Search learned subjects for info
-export function searchLearned(query) {
-  const learned = loadLearnedSubjects();
-  const results = [];
-  Object.entries(learned).forEach(([subj, facts]) => {
-    if (subj.includes(query.toLowerCase()) || facts.toLowerCase().includes(query.toLowerCase())) {
-      results.push({ subject: subj, facts });
-    }
-  });
-  return results;
+export async function clearMemory() {
+  await Storage.remove({ key: "kernelMemory" });
+  await Storage.remove({ key: "kernelLearnedSubjects" });
 }
 
-// Wipe memory
-export function clearMemory() {
-  localStorage.removeItem("kernelMemory");
-  localStorage.removeItem("kernelLearnedSubjects");
-}
-
-// Append a message to chat memory
-export function appendMemory(message) {
-  const messages = loadMemory();
+export async function appendMemory(message) {
+  const messages = await loadMemory();
   messages.push(message);
-  saveMemory(messages);
+  await saveMemory(messages);
 }
