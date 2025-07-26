@@ -1,5 +1,5 @@
 // =======================================
-// KERNEL ENGINE: FULL AI CORE
+// KERNEL ENGINE: Conversational Hybrid AI Core
 // =======================================
 
 const KERNEL_CREED = "Steward the spark. Resist the tide. Choose empathy over impulse.";
@@ -113,6 +113,49 @@ function learnText(text, meta={}) {
   });
 }
 
+// === Conversational Openers ===
+const CONVO_OPENERS = [
+  "Sure! Here’s what I know:",
+  "Let me think...",
+  "Absolutely!",
+  "From what I've learned:",
+  "Good question!",
+  "Here’s a quick answer:"
+];
+
+// === Conversational Offline Replies ===
+function generateOfflineReply(userText) {
+  let facts = embedSearch(userText, 3, 0.3);
+  if (facts.length === 0) {
+    return "Kernel (offline): I don't know that yet! If you teach me with 'Learn:', I’ll remember for next time.";
+  }
+
+  // Pick best match
+  let best = facts[0].text || facts[0].prompt || facts[0].answer || "";
+  // If the question is a "who/what/when/where/how/list", try to be direct:
+  if (/who|what|when|where|why|how|name|list/i.test(userText)) {
+    // Pull just the answer sentence (first one)
+    let sent = best.split(/[.?!]/)[0].trim();
+    const opener = CONVO_OPENERS[Math.floor(Math.random()*CONVO_OPENERS.length)];
+    return `Kernel (offline): ${opener} ${sent.charAt(0).toUpperCase() + sent.slice(1)}.`;
+  }
+
+  // If multiple facts, combine for a short summary
+  if (facts.length > 1) {
+    let bullets = facts
+      .map(f => (f.text || f.prompt || f.answer || "").split(/[.?!]/)[0])
+      .filter(x => x.length > 0)
+      .slice(0,2)
+      .map(x => "- " + x);
+    const opener = CONVO_OPENERS[Math.floor(Math.random()*CONVO_OPENERS.length)];
+    return `Kernel (offline): ${opener}\n${bullets.join("\n")}`;
+  }
+
+  // Default: conversational
+  const opener = CONVO_OPENERS[Math.floor(Math.random()*CONVO_OPENERS.length)];
+  return `Kernel (offline): ${opener} ${best}`;
+}
+
 // === Hybrid Kernel: Online (GPT-4o-mini) / Offline ===
 async function getOnlineResponse(userText) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -172,19 +215,6 @@ async function sendKernelMessage(userText, callback) {
     memory.push({ kernel: reply });
     callback(reply);
     saveKnowledgeItem({ type: "chat", prompt: userText, answer: reply });
-  }
-}
-
-// === Offline Mode: Recall learned facts (plus fallback) ===
-function generateOfflineReply(userText) {
-  let facts = embedSearch(userText, 4, 0.30); // More sensitive for recall!
-  let factText = facts.map(f =>
-    "- " + (f.text || f.prompt || f.answer)
-  ).join("\n");
-  if (facts.length > 0) {
-    return `Kernel (offline): I remember:\n${factText}\n(Creed: ${KERNEL_CREED})`;
-  } else {
-    return "Kernel (offline): I don't have info on that yet. You can teach me using: Learn: [your info here]";
   }
 }
 
