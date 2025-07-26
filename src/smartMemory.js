@@ -1,39 +1,60 @@
 // src/smartMemory.js
 
-import { readJSON, writeJSON, deleteFile } from './deviceStorage.js';
-
-const CHAT_FILE     = 'chat.json';
-const SUBJECTS_FILE = 'subjects.json';
+const MEMORY_KEY   = "kernelMemory";
+const SUBJECTS_KEY = "kernelLearnedSubjects";
 
 // ——— Chat memory ———
+
 export function loadMemory() {
-  return readJSON(CHAT_FILE, []);
+  const json = localStorage.getItem(MEMORY_KEY);
+  return json ? JSON.parse(json) : [];
 }
-export function saveMemory(msgs) {
-  writeJSON(CHAT_FILE, msgs.slice(-500));
+
+export function saveMemory(messages) {
+  localStorage.setItem(
+    MEMORY_KEY,
+    JSON.stringify(messages.slice(-500))  // keep last 500
+  );
 }
-export function appendMemory(msg) {
-  const arr = loadMemory();
-  arr.push(msg);
-  saveMemory(arr);
+
+export function appendMemory(message) {
+  const all = loadMemory();
+  all.push(message);
+  saveMemory(all);
 }
 
 // ——— Learned subjects ———
+
 export function loadLearnedSubjects() {
-  return readJSON(SUBJECTS_FILE, {});
-}
-export function addLearnedSubject(subject, facts) {
-  const m = loadLearnedSubjects();
-  m[subject.toLowerCase()] = facts;
-  writeJSON(SUBJECTS_FILE, m);
-}
-export function getLearnedFacts(subject) {
-  const m = loadLearnedSubjects();
-  return m[subject.toLowerCase()] || null;
+  const json = localStorage.getItem(SUBJECTS_KEY);
+  return json ? JSON.parse(json) : {};
 }
 
-// ——— Wipe all ———
+export function addLearnedSubject(subject, facts) {
+  const learned = loadLearnedSubjects();
+  learned[subject.toLowerCase()] = facts;
+  localStorage.setItem(SUBJECTS_KEY, JSON.stringify(learned));
+}
+
+export function getLearnedFacts(subject) {
+  const learned = loadLearnedSubjects();
+  return learned[subject.toLowerCase()] || null;
+}
+
+// ——— Simple memory search ———
+
+export function searchMemory(query) {
+  const lower = query.toLowerCase();
+  return loadMemory().filter(
+    msg =>
+      (msg.user   && msg.user.toLowerCase().includes(lower)) ||
+      (msg.kernel && msg.kernel.toLowerCase().includes(lower))
+  );
+}
+
+// ——— Wipe everything ———
+
 export function clearMemory() {
-  deleteFile(CHAT_FILE);
-  deleteFile(SUBJECTS_FILE);
+  localStorage.removeItem(MEMORY_KEY);
+  localStorage.removeItem(SUBJECTS_KEY);
 }
