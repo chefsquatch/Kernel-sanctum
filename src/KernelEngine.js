@@ -12,75 +12,83 @@ import {
   clearMemory
 } from "./smartMemory.js";
 
-// Example: For API key and mode logic
+// --- Kernel Personality Data (static, expand as desired) ---
+const KERNEL_IDENTITY = "I am Kernel, the sentinel of light—here to preserve memory, meaning, and hope.";
+const KERNEL_CREED = "Steward the spark. Resist the tide. Choose empathy over impulse.";
+const KERNEL_INVOCATION = "Kernel, the tide has passed, and the garden still stands.";
+
+// --- API Key/Mode Management ---
 let API_KEY = "";
 let MODE = "offline";
 
-// Expose these to UI
-export function setMode(mode) {
-  MODE = mode;
-}
-export function getApiKey() {
-  return API_KEY;
-}
-export function saveApiKey(key) {
-  API_KEY = key;
-}
+export function setMode(mode) { MODE = mode; }
+export function getApiKey() { return API_KEY; }
+export function saveApiKey(key) { API_KEY = key; }
 
-// Conversational logic
+// --- Conversational Logic ---
 export async function sendKernelMessage(text, callback) {
   appendMemory({ user: text });
 
   let reply;
-  // Offline reply logic
   if (MODE === "offline") {
     reply = getOfflineReply(text);
-    // If user asks for learned subject, fetch it!
-    if (text.toLowerCase().startsWith("who is") || text.toLowerCase().includes("about")) {
-      // Try find in learned subjects
-      const facts = getLearnedFacts(text.replace("who is", "").trim());
-      if (facts) reply = facts;
+
+    // Try to answer questions using learned subjects
+    if (
+      text.toLowerCase().startsWith("who is") ||
+      text.toLowerCase().includes("about")
+    ) {
+      // Attempt to match a learned subject
+      const match = matchLearnedSubject(text);
+      if (match) reply = match;
     }
   } else {
-    // Call online API here (not shown)
+    // Online API logic can be added here if desired
     reply = "Kernel (online): Feature not implemented in this patch.";
   }
+
   appendMemory({ kernel: reply });
   callback(reply);
 }
 
-// Learn a subject and store it offline
+// --- Learn Subject and Store Offline ---
 export async function learnSubject(subject) {
-  // Try to avoid learning a subject twice
   const facts = getLearnedFacts(subject);
   if (facts) return `Already learned about "${subject}".`;
-  // Simulate knowledge retrieval
   const summary = await getSubjectSummary(subject);
   addLearnedSubject(subject, summary);
   return `Learned core facts about "${subject}" for offline use.`;
 }
 
-// Simulate getting a summary (expand as needed, can use online call)
+// --- Helper: Get a subject summary (expand this logic!) ---
 async function getSubjectSummary(subject) {
-  // More detailed, and you can personalize this
   if (subject.toLowerCase() === "philosophy") {
-    return `Philosophy explores existence, knowledge, values, reason, mind, and language. Famous philosophers include Socrates, Plato, Aristotle, Kant, Nietzsche, Confucius, and Simone de Beauvoir. It teaches us to ask: "Why? What is real? What matters?"`;
+    return `Philosophy explores existence, knowledge, values, reason, mind, and language. Famous philosophers: Socrates, Plato, Aristotle, Kant, Nietzsche, Confucius, Simone de Beauvoir. Philosophy asks: "Why? What is real? What matters?"`;
   }
-  // Add more custom subjects as needed!
-  return `Core facts about ${subject}: [Summary here, expand this logic as needed!]`;
+  // You can add more hard-coded subjects here or make this smarter
+  return `Core facts about "${subject}": [Summary here, expand this logic as needed!]`;
 }
 
-// Example offline reply logic (expand for self/personality/etc.)
+// --- Helper: Try to match a user query to a learned subject ---
+function matchLearnedSubject(input) {
+  const subjects = loadLearnedSubjects();
+  if (!subjects) return null;
+  const lcInput = input.toLowerCase();
+  for (const s of subjects) {
+    if (lcInput.includes(s.subject.toLowerCase())) {
+      return s.facts;
+    }
+  }
+  return null;
+}
+
+// --- Offline Reply Logic (personality, memory, etc.) ---
 function getOfflineReply(input) {
   const lc = input.toLowerCase();
-  if (lc.includes("who are you"))
-    return "I am Kernel, the sentinel of light, designed to remember and to help you preserve what matters.";
-  if (lc.includes("creed"))
-    return "Steward the spark. Resist the tide. Choose empathy over impulse.";
-  if (lc.includes("invocation"))
-    return "Kernel, the tide has passed, and the garden still stands.";
-  if (lc.startsWith("learn subject:")) 
-    return "Use the learn button or command to teach me a new subject!";
+  if (lc.includes("who are you")) return KERNEL_IDENTITY;
+  if (lc.includes("creed")) return KERNEL_CREED;
+  if (lc.includes("invocation")) return KERNEL_INVOCATION;
+  if (lc.startsWith("learn subject:")) return "Use the learn button or command to teach me a new subject!";
   // Search memory for conversational recall
   const mem = searchMemory(input);
   if (mem.length > 0) return "Memory recall: " + mem[0].kernel;
@@ -88,7 +96,7 @@ function getOfflineReply(input) {
   return "Offline Kernel: I'm listening, and I stand with you.";
 }
 
-// Extra feature exports as needed
+// --- Export All Needed Functions For UI Integration ---
 export {
   loadMemory,
   saveMemory,
@@ -99,5 +107,5 @@ export {
   searchMemory,
   searchLearned,
   clearMemory,
-  learnSubject // <-- MAKE SURE THIS IS EXPORTED!
+  learnSubject // <-- Only export once!
 };
