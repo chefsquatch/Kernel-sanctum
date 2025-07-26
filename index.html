@@ -234,7 +234,7 @@
   </div>
   <input type="file" id="photoInput" style="display:none" accept="image/*">
   <script type="module">
-    // Replace with actual KernelEngine imports!
+    // Notice the import path: './src/KernelEngine.js'
     import {
       sendKernelMessage,
       getMemory,
@@ -245,7 +245,7 @@
       analyzePhoto,
       learnSubject,
       addReminder
-    } from './KernelEngine.js';
+    } from './src/KernelEngine.js';
 
     let messages = [
       {kernel: "Welcome! How can I help you today?"}
