@@ -1,16 +1,75 @@
-document.getElementById("learnBtn").onclick = async function() {
+import {
+  sendKernelMessage,
+  getMemory,
+  saveApiKey,
+  setMode,
+  getApiKey,
+  learnSubject
+} from './src/KernelEngine.js';
+
+let messages = [
+  { kernel: "Welcome! How can I help you today?" }
+];
+
+function renderChat() {
+  const chatbox = document.getElementById("chatbox");
+  chatbox.innerHTML = "";
+  messages.forEach(m => {
+    if (m.user) chatbox.innerHTML += `<div class="user-msg">${m.user}</div>`;
+    if (m.kernel) chatbox.innerHTML += `<div class="kernel-msg">${m.kernel}</div>`;
+  });
+  chatbox.scrollTop = chatbox.scrollHeight;
+}
+renderChat();
+
+document.getElementById("chat-form").onsubmit = async function (e) {
+  e.preventDefault();
+  const input = document.getElementById("input");
+  const text = input.value.trim();
+  if (!text) return;
+  messages.push({ user: text });
+  renderChat();
+  input.value = "";
+  sendKernelMessage(text, (reply) => {
+    messages.push({ kernel: reply });
+    renderChat();
+  });
+};
+
+// --- Feature Buttons ---
+document.getElementById("learnBtn").onclick = async function () {
   let subj = prompt("What subject should I learn?");
   if (!subj) return;
+
   messages.push({ user: "learn subject: " + subj });
   renderChat();
 
   try {
-    // Await the actual reply from learnSubject
+    // Await actual reply from learnSubject
     const reply = await learnSubject(subj);
     messages.push({ kernel: reply });
   } catch (err) {
     messages.push({ kernel: "Oops, something went wrong while learning." });
   }
 
+  renderChat();
+};
+
+// --- Settings Modal ---
+document.getElementById("settingsBtn").onclick = function () {
+  document.getElementById("settingsModal").classList.add("active");
+  document.getElementById("apiKeyInput").value = getApiKey();
+};
+document.getElementById("closeSettings").onclick = function () {
+  document.getElementById("settingsModal").classList.remove("active");
+};
+document.getElementById("saveSettings").onclick = function (e) {
+  e.preventDefault();
+  const apiKey = document.getElementById("apiKeyInput").value;
+  const mode = document.getElementById("modeSelect").value;
+  saveApiKey(apiKey);
+  setMode(mode);
+  document.getElementById("settingsModal").classList.remove("active");
+  messages.push({ kernel: "Settings updated." });
   renderChat();
 };
