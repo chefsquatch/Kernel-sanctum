@@ -21,6 +21,10 @@ export function getApiKey() {
 export function saveApiKey(key) {
   API_KEY = key;
 }
+// Expose mode so UI can read it
+export function getMode() {
+  return MODE;
+}
 
 // ——— Offline-only reply logic ———
 function getOfflineReply(text) {
@@ -55,6 +59,9 @@ function getOfflineReply(text) {
 
 // ——— Send a message (offline or online) ———
 export async function sendKernelMessage(text, callback) {
+  // Debug log
+  console.log("▶ sendKernelMessage()", { MODE, hasApiKey: !!API_KEY, text });
+
   // 1) store user message
   appendMemory({ user: text });
 
@@ -65,7 +72,7 @@ export async function sendKernelMessage(text, callback) {
     reply = getOfflineReply(text);
 
   } else {
-    // online mode via OpenAI with robust error handling
+    // online mode via OpenAI with robust fallback
     if (!API_KEY) {
       reply = "Error: No API key set.";
     } else {
@@ -83,6 +90,7 @@ export async function sendKernelMessage(text, callback) {
 
         history.push({ role: "user", content: text });
 
+        console.log("▶ calling OpenAI…", history);
         const res = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -99,11 +107,13 @@ export async function sendKernelMessage(text, callback) {
           }),
         });
 
+        console.log("▶ response status:", res.status);
         if (!res.ok) {
-          throw new Error(`OpenAI HTTP ${res.status}`);
+          throw new Error(`HTTP ${res.status}`);
         }
 
         const data = await res.json();
+        console.log("▶ OpenAI JSON:", data);
         const aiReply = data.choices?.[0]?.message?.content?.trim();
         if (!aiReply) {
           throw new Error("Empty reply from API");
