@@ -38,7 +38,7 @@ export async function sendKernelMessage(text, callback) {
     // If user asks for learned subject, fetch it!
     if (text.toLowerCase().startsWith("who is") || text.toLowerCase().includes("about")) {
       // Try find in learned subjects
-      const facts = getLearnedFacts(text.replace("who is", "").trim());
+      const facts = getLearnedFacts(text.replace(/who is|about/gi, "").trim());
       if (facts) reply = facts;
     }
   } else {
@@ -66,6 +66,9 @@ async function getSubjectSummary(subject) {
   if (subject.toLowerCase() === "philosophy") {
     return `Philosophy explores existence, knowledge, values, reason, mind, and language. Famous philosophers include Socrates, Plato, Aristotle, Kant, Nietzsche, Confucius, and Simone de Beauvoir. It teaches us to ask: "Why? What is real? What matters?"`;
   }
+  if (subject.toLowerCase() === "physics") {
+    return `Physics studies matter, energy, and the fundamental forces of nature. Famous physicists include Newton, Einstein, Feynman, Curie, and Hawking. It helps us understand the universe from the tiniest particles to the vast cosmos.`;
+  }
   // Add more custom subjects as needed!
   return `Core facts about ${subject}: [Summary here, expand this logic as needed!]`;
 }
@@ -83,7 +86,9 @@ function getOfflineReply(input) {
     return "Use the learn button or command to teach me a new subject!";
   // Search memory for conversational recall
   const mem = searchMemory(input);
-  if (mem.length > 0) return "Memory recall: " + mem[0].kernel;
+  if (mem.length > 0) {
+    return "Memory recall: " + (mem[0].kernel || "[no memory text found]");
+  }
   // Fallback
   return "Offline Kernel: I'm listening, and I stand with you.";
 }
@@ -98,5 +103,6 @@ export {
   getLearnedFacts,
   searchMemory,
   searchLearned,
-  clearMemory
+  clearMemory,
+  learnSubject // <-- MAKE SURE THIS IS EXPORTED!
 };
