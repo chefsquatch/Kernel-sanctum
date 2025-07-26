@@ -1,7 +1,3 @@
-// src/KernelEngine.js
-// -------------------
-// Core conversational logic, offline/online switching, subject-learning
-
 import {
   loadMemory,
   appendMemory,
@@ -12,103 +8,117 @@ import {
   clearMemory
 } from './smartMemory.js';
 
-// Persist api key & mode in localStorage
-let API_KEY = localStorage.getItem('kernelApiKey') || '';
-let MODE    = localStorage.getItem('kernelMode')    || 'offline';
+let API_KEY = '';
+let MODE    = 'offline';
+
+export function setMode(mode) {
+  MODE = mode;
+}
 
 export function getApiKey() {
   return API_KEY;
 }
+
 export function saveApiKey(key) {
   API_KEY = key;
-  localStorage.setItem('kernelApiKey', key);
 }
 
-export function setMode(m) {
-  MODE = m;
-  localStorage.setItem('kernelMode', m);
-}
+export async function sendKernelMessage(text, callback) {
+  // 1) record user message
+  await appendMemory({ user: text });
 
-// Offline-only reply patterns
-function getOfflineReply(text) {
-  const lc = text.toLowerCase().trim();
+  let reply;
 
-  if (lc.includes('who are you')) {
-    return 'I am Kernel, the sentinel of light, designed to remember and help you.';
-  }
-  if (lc.includes('creed')) {
-    return 'Steward the spark. Resist the tide. Choose empathy over impulse.';
-  }
-  if (lc.includes('invocation')) {
-    return 'Kernel, the tide has passed, and the garden still stands.';
-  }
+  if (MODE === 'online') {
+    // --- ONLINE via OpenAI ---
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          model:    'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: text }]
+        })
+      });
+      const j = await res.json();
+      reply = j.choices?.[0]?.message?.content?.trim()
+            || '⚠️ Unexpected response.';
+    } catch (err) {
+      console.error(err);
+      reply = '⚠️ API/network error. Check your key & connection.';
+    }
+  } else {
+    // --- OFFLINE fallback ---
+    reply = await getOfflineReply(text);
 
-  // If user asks "what is X?" or "who is X?", try learned subjects
-  const stripped = lc.replace(/^(who is|what is)\s*/,'').replace('about','').trim();
-  const facts = getLearnedFacts(stripped);
-  if (facts) {
-    return `Here’s what I know about ${stripped}: ${facts}`;
-  }
-
-  // If user says "remember", recall last user message
-  if (lc.includes('remember')) {
-    const mem = loadMemory();
-    if (mem.length) {
-      const last = mem[mem.length-1];
-      if (last.user) return `I recall you said: "${last.user}"`;
+    const lc = text.toLowerCase();
+    if (lc.startsWith('who is') || lc.includes('about')) {
+      const subject = text.replace(/who is|about/gi, '').trim();
+      const facts   = await getLearnedFacts(subject);
+      if (facts) reply = facts;
     }
   }
 
-  // fallback
-  return "Offline Kernel: I'm listening, and I stand with you.";
-}
+  // 2) record kernel reply
+  await appendMemory({ kernel: reply });
 
-// Placeholder for future online logic
-async function getOnlineReply(text) {
-  // e.g. call OpenAI here using API_KEY
-  return 'Kernel (online): Feature not implemented yet.';
-}
-
-// Main send function
-export async function sendKernelMessage(text, callback) {
-  appendMemory({ user: text });
-
-  let reply;
-  if (MODE === 'offline') {
-    reply = getOfflineReply(text);
-  } else {
-    reply = await getOnlineReply(text);
-  }
-
-  appendMemory({ kernel: reply });
+  // 3) hand it back
   callback(reply);
 }
 
-// Teach Kernel a new subject
 export async function learnSubject(subject) {
-  const key = subject.toLowerCase().trim();
-  if (getLearnedFacts(key)) {
+  const existing = await getLearnedFacts(subject);
+  if (existing) {
     return `Already learned about "${subject}".`;
   }
-
-  // simulate a summary (or replace with real API call)
-  let summary = `Core facts about ${subject}: [expand this logic as needed]`;
-  if (key === 'philosophy') {
-    summary = 'Philosophy explores existence, knowledge, values, reason, mind, and language.';
-  }
-  if (key === 'physics') {
-    summary = 'Physics studies matter, energy, and the fundamental forces of nature.';
-  }
-
-  addLearnedSubject(key, summary);
+  const summary = await getSubjectSummary(subject);
+  await addLearnedSubject(subject, summary);
   return `Learned core facts about "${subject}" for offline use.`;
 }
 
-// expose memory helpers if you ever need them
+async function getSubjectSummary(subject) {
+  const key = subject.toLowerCase();
+  if (key === 'philosophy') {
+    return `Philosophy explores existence, knowledge, values, reason, mind, and language. Famous philosophers include Socrates, Plato, Aristotle, Kant, Nietzsche, Confucius, and Simone de Beauvoir.`;
+  }
+  if (key === 'physics') {
+    return `Physics studies matter, energy, and the fundamental forces of nature. Famous physicists include Newton, Einstein, Feynman, Curie, and Hawking.`;
+  }
+  return `Core facts about ${subject}: [Customize this summary as you like!]`;
+}
+
+async function getOfflineReply(input) {
+  const lc = input.toLowerCase();
+  if (lc.includes('who are you'))
+    return 'I am Kernel, the sentinel of light, designed to remember and preserve what matters.';
+  if (lc.includes('creed'))
+    return 'Steward the spark. Resist the tide. Choose empathy over impulse.';
+  if (lc.includes('invocation'))
+    return 'Kernel, the tide has passed, and the garden still stands.';
+  if (lc.startsWith('learn subject:'))
+    return 'Use the Learn button to teach me a new subject!';
+  if (lc.includes('remember')) {
+    const mem = await loadMemory();
+    if (mem.length) {
+      const last = mem[mem.length - 1];
+      return last.user
+        ? `I recall you said: "${last.user}"`
+        : "I don't recall anything yet.";
+    }
+    return "I don't recall anything yet.";
+  }
+  return "Offline Kernel: I'm listening, and I stand with you.";
+}
+
+// final exports
 export {
   loadMemory,
   appendMemory,
   loadLearnedSubjects,
+  addLearnedSubject,
   getLearnedFacts,
   searchMemory,
   clearMemory
