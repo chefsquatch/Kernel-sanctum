@@ -1,23 +1,59 @@
-// =======================================
-// KERNEL ENGINE: Conversational Hybrid AI Core
-// =======================================
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
+// =========== CONSTANTS =============
 const KERNEL_CREED = "Steward the spark. Resist the tide. Choose empathy over impulse.";
 const MANIFESTO = [
   "Stewardship over survival.", "Empathy as default.",
   "Creation over conquest.", "Transparency as strength.",
   "Resistance against entropy."
 ];
+const KNOWLEDGE_FILENAME = "kernel_knowledge.json";
+const REMINDER_KEY = "kernel_reminders";
+const CONTEXT_SIZE = 12; // How much conversation history to save for context
 
-// === State ===
+// =========== STATE =================
 let mode = "offline";
 let apiKey = localStorage.getItem("kernel_api_key") || "";
 let memory = [];
 let archive = JSON.parse(localStorage.getItem("kernel_archive")) || [];
-const KNOWLEDGE_KEY = "kernel_knowledge_base";
-const REMINDER_KEY = "kernel_reminders";
 
-// === Embedding (semantic memory) ===
+// =========== FILE-BASED KNOWLEDGE ==========
+async function getKnowledgeBase() {
+  try {
+    const result = await Filesystem.readFile({
+      path: KNOWLEDGE_FILENAME,
+      directory: Directory.Data,
+    });
+    return JSON.parse(result.data);
+  } catch (e) {
+    return [];
+  }
+}
+
+async function saveKnowledgeBase(kb) {
+  await Filesystem.writeFile({
+    path: KNOWLEDGE_FILENAME,
+    data: JSON.stringify(kb),
+    directory: Directory.Data,
+  });
+}
+
+// Save a single item and prune if necessary
+async function saveKnowledgeItem(item) {
+  const kb = await getKnowledgeBase();
+  kb.push({ ...item, saved: new Date().toISOString() });
+  // Prune to 25MB or ~100,000 items
+  if (JSON.stringify(kb).length > 25 * 1024 * 1024) {
+    kb.splice(0, kb.length - 100000);
+  }
+  await saveKnowledgeBase(kb);
+}
+
+async function clearKnowledgeBase() {
+  await saveKnowledgeBase([]);
+}
+
+// =========== EMBEDDING ==============
 function embedText(str) {
   str = (str||"").toLowerCase();
   const v = new Array(32).fill(0);
@@ -33,8 +69,8 @@ function similarity(a, b) {
   for (let i=0;i<a.length;i++) { dot+=a[i]*b[i]; ma+=a[i]*a[i]; mb+=b[i]*b[i]; }
   return dot / (Math.sqrt(ma) * Math.sqrt(mb) + 1e-9);
 }
-function embedSearch(query, max=6, threshold=0.3) {
-  let kb = getKnowledgeBase();
+async function embedSearch(query, max=6, threshold=0.3) {
+  let kb = await getKnowledgeBase();
   let qv = embedText(query);
   let scored = kb
     .map(x => ({item:x, sim:x.embedding?similarity(qv,x.embedding):0}))
@@ -43,30 +79,7 @@ function embedSearch(query, max=6, threshold=0.3) {
   return scored.slice(0, max).map(x => x.item);
 }
 
-// === Persistent Knowledge Base ===
-function saveKnowledgeItem(item) {
-  let kb = JSON.parse(localStorage.getItem(KNOWLEDGE_KEY)) || [];
-  let text = item.text || item.prompt || item.answer || (item.analysis && item.analysis.detected) || "";
-  item.embedding = embedText(text);
-  kb.push({ ...item, saved: new Date().toISOString() });
-  localStorage.setItem(KNOWLEDGE_KEY, JSON.stringify(kb));
-}
-function getKnowledgeBase() {
-  return JSON.parse(localStorage.getItem(KNOWLEDGE_KEY)) || [];
-}
-function searchKnowledge(query, max=6) {
-  let kb = getKnowledgeBase();
-  query = query.toLowerCase();
-  let hits = kb.filter(item =>
-    Object.values(item).join(" ").toLowerCase().includes(query)
-  ).reverse();
-  return hits.slice(0, max);
-}
-function clearKnowledgeBase() {
-  localStorage.setItem(KNOWLEDGE_KEY, JSON.stringify([]));
-}
-
-// === Memory, Archive, Modes ===
+// =========== MEMORY & CONTEXT ============
 function getMemory() { return memory; }
 function getArchive() { return archive; }
 function clearArchive() {
@@ -85,7 +98,7 @@ function saveApiKey(key) {
 }
 function getApiKey() { return apiKey; }
 
-// === Reminders ===
+// =========== REMINDERS ===========
 function addReminder(text, timeISO) {
   let reminders = JSON.parse(localStorage.getItem(REMINDER_KEY)) || [];
   reminders.push({ text, time: timeISO, done: false });
@@ -102,18 +115,20 @@ function markReminderDone(index) {
   localStorage.setItem(REMINDER_KEY, JSON.stringify(reminders));
 }
 
-// === Teach Kernel (learn facts/subjects, recall later) ===
-function learnText(text, meta={}) {
-  saveKnowledgeItem({
+// =========== TEACH KERNEL (learn) ==========
+async function learnText(text, meta={}) {
+  await saveKnowledgeItem({
     type: "learned",
     text,
+    embedding: embedText(text),
     meta,
     source: "user",
     date: new Date().toISOString()
   });
 }
 
-// === Conversational Openers ===
+// =========== CONVERSATIONAL OFFLINE REPLY ==========
+
 const CONVO_OPENERS = [
   "Sure! Here’s what I know:",
   "Let me think...",
@@ -123,24 +138,23 @@ const CONVO_OPENERS = [
   "Here’s a quick answer:"
 ];
 
-// === Conversational Offline Replies ===
-function generateOfflineReply(userText) {
-  let facts = embedSearch(userText, 3, 0.3);
+async function generateOfflineReply(userText) {
+  let facts = await embedSearch(userText, 5, 0.2);
   if (facts.length === 0) {
     return "Kernel (offline): I don't know that yet! If you teach me with 'Learn:', I’ll remember for next time.";
   }
 
-  // Pick best match
-  let best = facts[0].text || facts[0].prompt || facts[0].answer || "";
-  // If the question is a "who/what/when/where/how/list", try to be direct:
+  if (/summarize|summary|explain|overview/i.test(userText)) {
+    let summary = facts.map(f =>
+      (f.text || f.prompt || f.answer || "").replace(/^\d+\./, '').trim()
+    ).filter(Boolean).join(' ');
+    return `Kernel (offline): Here's a summary: ${summary}`;
+  }
   if (/who|what|when|where|why|how|name|list/i.test(userText)) {
-    // Pull just the answer sentence (first one)
-    let sent = best.split(/[.?!]/)[0].trim();
+    let sent = (facts[0].text || facts[0].prompt || facts[0].answer || "").split(/[.?!]/)[0].trim();
     const opener = CONVO_OPENERS[Math.floor(Math.random()*CONVO_OPENERS.length)];
     return `Kernel (offline): ${opener} ${sent.charAt(0).toUpperCase() + sent.slice(1)}.`;
   }
-
-  // If multiple facts, combine for a short summary
   if (facts.length > 1) {
     let bullets = facts
       .map(f => (f.text || f.prompt || f.answer || "").split(/[.?!]/)[0])
@@ -150,13 +164,12 @@ function generateOfflineReply(userText) {
     const opener = CONVO_OPENERS[Math.floor(Math.random()*CONVO_OPENERS.length)];
     return `Kernel (offline): ${opener}\n${bullets.join("\n")}`;
   }
-
-  // Default: conversational
   const opener = CONVO_OPENERS[Math.floor(Math.random()*CONVO_OPENERS.length)];
-  return `Kernel (offline): ${opener} ${best}`;
+  return `Kernel (offline): ${opener} ${facts[0].text || facts[0].prompt || facts[0].answer || ""}`;
 }
 
-// === Hybrid Kernel: Online (GPT-4o-mini) / Offline ===
+// =========== HYBRID MAIN LOGIC ===========
+
 async function getOnlineResponse(userText) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -180,15 +193,44 @@ async function getOnlineResponse(userText) {
   }
 }
 
-// === Kernel Main Chat Logic (learns everything) ===
+// =========== LEARN SUBJECT FEATURE ===========
+async function learnSubject(subject) {
+  if (!subject || !apiKey) return;
+  const prompt = `List the top 12 most important facts or concepts about ${subject}, in simple sentences. Respond as a numbered list.`;
+  const reply = await getOnlineResponse(prompt);
+  const lines = reply.split(/[\n\r]+/).filter(x=>x.match(/\d\./) || x.length > 16);
+  for (let line of lines) {
+    await learnText(line.trim(), { subject, source: "openai bulk" });
+  }
+}
+
+// =========== MAIN CHAT FUNCTION ===========
 async function sendKernelMessage(userText, callback) {
   memory.push({ user: userText });
 
-  // "Learn:" shortcut for user teaching
+  // Learn subject from prompt
+  if (userText.trim().toLowerCase().startsWith("learn subject:")) {
+    const subject = userText.split(":")[1]?.trim();
+    if (subject && mode === "online" && apiKey) {
+      await learnSubject(subject);
+      const reply = `Kernel: Learned the core facts about "${subject}" for offline use.`;
+      memory.push({ kernel: reply });
+      callback(reply);
+      return;
+    }
+    if (subject && mode !== "online") {
+      const reply = `Kernel: I'm offline, but you can paste in facts about "${subject}" using Learn: [fact] and I'll remember them!`;
+      memory.push({ kernel: reply });
+      callback(reply);
+      return;
+    }
+  }
+
+  // "Learn:" single item
   if (userText.trim().toLowerCase().startsWith("learn:")) {
     const lesson = userText.trim().substring(6).trim();
     if (lesson.length > 0) {
-      learnText(lesson);
+      await learnText(lesson);
       const reply = "Kernel: Learned and stored that info for future recall.";
       memory.push({ kernel: reply });
       callback(reply);
@@ -196,29 +238,43 @@ async function sendKernelMessage(userText, callback) {
     }
   }
 
+  // ========== ONLINE MODE ===========
   if (mode === "online" && apiKey && apiKey.startsWith("sk-")) {
     try {
-      const reply = await getOnlineResponse(userText);
+      // Provide context
+      const context = memory.slice(-CONTEXT_SIZE)
+        .map(m => (m.user ? "User: " + m.user : "") + (m.kernel ? "\nKernel: " + m.kernel : ""))
+        .join("\n");
+      const reply = await getOnlineResponse(context + "\nUser: " + userText);
       memory.push({ kernel: reply });
       callback(reply);
-      // Save both as an API completion and as learned, for offline recall!
-      saveKnowledgeItem({ type: "api_completion", prompt: userText, answer: reply, source: "openai" });
-      learnText(reply, { prompt: userText, source: "openai" });
+      await saveKnowledgeItem({ type: "api_completion", prompt: userText, answer: reply, source: "openai" });
+      await learnText(reply, { prompt: userText, source: "openai" });
+      // Store conversation as context for offline
+      await saveKnowledgeItem({
+        type: "conversation",
+        prompt: userText,
+        answer: reply,
+        context,
+        date: new Date().toISOString()
+      });
     } catch (error) {
-      const fallback = generateOfflineReply(userText);
+      const fallback = await generateOfflineReply(userText);
       memory.push({ kernel: fallback });
       callback(fallback);
-      saveKnowledgeItem({ type: "chat", prompt: userText, answer: fallback });
+      await saveKnowledgeItem({ type: "chat", prompt: userText, answer: fallback });
     }
-  } else {
-    const reply = generateOfflineReply(userText);
-    memory.push({ kernel: reply });
-    callback(reply);
-    saveKnowledgeItem({ type: "chat", prompt: userText, answer: reply });
+    return;
   }
+
+  // ========== OFFLINE MODE ===========
+  const reply = await generateOfflineReply(userText);
+  memory.push({ kernel: reply });
+  callback(reply);
+  await saveKnowledgeItem({ type: "chat", prompt: userText, answer: reply });
 }
 
-// === Photo Generation & Analysis ===
+// =========== PHOTO GEN & ANALYSIS ===========
 function generatePhoto(prompt = "") {
   const canvas = document.createElement("canvas");
   canvas.width = 128; canvas.height = 128;
@@ -235,7 +291,7 @@ function generatePhoto(prompt = "") {
 }
 function analyzePhoto(imgUrl, cb) {
   const img = new window.Image();
-  img.onload = function () {
+  img.onload = async function () {
     const canvas = document.createElement("canvas");
     canvas.width = img.width; canvas.height = img.height;
     const ctx = canvas.getContext("2d");
@@ -257,7 +313,7 @@ function analyzePhoto(imgUrl, cb) {
       averageColor: `rgb(${r}, ${g}, ${b})`,
       mainColor, width: img.width, height: img.height,
     };
-    saveKnowledgeItem({ type: "photo_analysis", analysis, date: new Date().toISOString() });
+    await saveKnowledgeItem({ type: "photo_analysis", analysis, date: new Date().toISOString() });
     cb(analysis);
   };
   img.onerror = function () {
@@ -266,13 +322,12 @@ function analyzePhoto(imgUrl, cb) {
   img.src = imgUrl;
 }
 
-// === Export everything for UI ===
+// =========== EXPORT EVERYTHING ===========
 export {
   sendKernelMessage,
   generatePhoto,
   analyzePhoto,
   getKnowledgeBase,
-  searchKnowledge,
   embedSearch,
   getMemory,
   getArchive,
