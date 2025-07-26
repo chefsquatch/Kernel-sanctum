@@ -189,6 +189,24 @@
       cursor: pointer;
       margin: -13px -13px 6px 0;
     }
+    .settings-box .sync-btn {
+      background: #25312d;
+      color: #4ad681;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 13px;
+      font-size: 1.05rem;
+      margin: 7px 0 0 0;
+      cursor: pointer;
+      display: block;
+      width: 100%;
+      text-align: left;
+      transition: background .2s, color .2s;
+    }
+    .settings-box .sync-btn:hover {
+      background: #25312d99;
+      color: #68e2b1;
+    }
     @media (max-width: 600px) {
       .kernel-container { min-height: 100vh; border-radius: 0; }
       .header { border-radius: 0; }
@@ -230,11 +248,13 @@
         </select>
       </label>
       <button class="feature-btn" id="saveSettings">Save</button>
+      <hr style="border:0;border-top:1px solid #27343a;margin:16px 0 6px 0;">
+      <button class="sync-btn" id="exportBtn">Copy Export to Clipboard</button>
+      <button class="sync-btn" id="importBtn">Import from Clipboard</button>
     </div>
   </div>
   <input type="file" id="photoInput" style="display:none" accept="image/*">
   <script type="module">
-    // Notice the import path: './src/KernelEngine.js'
     import {
       sendKernelMessage,
       getMemory,
@@ -244,7 +264,9 @@
       generatePhoto,
       analyzePhoto,
       learnSubject,
-      addReminder
+      addReminder,
+      exportKernelDataString,
+      importKernelDataString
     } from './src/KernelEngine.js';
 
     let messages = [
@@ -339,6 +361,29 @@
       messages.push({kernel: "Settings updated."});
       renderChat();
     };
+
+    // --- Clipboard Sync Buttons ---
+    window.copyExportToClipboard = async function() {
+      const str = exportKernelDataString();
+      try {
+        await navigator.clipboard.writeText(str);
+        alert("Export string copied to clipboard!");
+      } catch {
+        alert("Failed to copy. Please try again.");
+      }
+    };
+    window.importFromClipboard = async function() {
+      try {
+        const str = await navigator.clipboard.readText();
+        if (!str) return alert("Clipboard is empty!");
+        const ok = importKernelDataString(str);
+        alert(ok ? "Kernel data imported from clipboard!" : "Import failed: Invalid data.");
+      } catch {
+        alert("Clipboard read failed.");
+      }
+    };
+    document.getElementById("exportBtn").onclick = window.copyExportToClipboard;
+    document.getElementById("importBtn").onclick = window.importFromClipboard;
   </script>
 </body>
 </html>
