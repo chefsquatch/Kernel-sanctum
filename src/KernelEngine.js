@@ -1,86 +1,103 @@
 // src/KernelEngine.js
+
 import {
-  loadMemory,           saveMemory,      appendMemory,
-  loadLearnedSubjects,  addLearnedSubject,
-  getLearnedFacts,      searchMemory,
-  searchLearned,        clearMemory
-} from './smartMemory.js';
+  loadMemory,
+  saveMemory,
+  appendMemory,
+  loadLearnedSubjects,
+  addLearnedSubject,
+  getLearnedFacts,
+  searchMemory,
+  searchLearned,
+  clearMemory
+} from "./smartMemory.js";
 
-let API_KEY = '';
-let MODE    = 'offline';
+// Example: For API key and mode logic
+let API_KEY = "";
+let MODE = "offline";
 
-// UI-exposed
-export function setMode(m)    { MODE = m; }
-export function getApiKey()   { return API_KEY; }
-export function saveApiKey(k) { API_KEY = k; }
+// Expose these to UI
+export function setMode(mode) {
+  MODE = mode;
+}
+export function getApiKey() {
+  return API_KEY;
+}
+export function saveApiKey(key) {
+  API_KEY = key;
+}
 
-// sendKernelMessage
-export async function sendKernelMessage(text, cb) {
+// Conversational logic
+export async function sendKernelMessage(text, callback) {
   await appendMemory({ user: text });
+
   let reply;
-
-  if (MODE === 'offline') {
+  // Offline reply logic
+  if (MODE === "offline") {
     reply = getOfflineReply(text);
-
-    // if they ask “who is X” or “tell me about X”
-    if (/^(who is|about )/i.test(text) || text.toLowerCase().includes('about')) {
-      const sub = text.replace(/who is|about/gi, '').trim();
-      const facts = await getLearnedFacts(sub);
+    // If user asks for learned subject, fetch it!
+    if (text.toLowerCase().startsWith("who is") || text.toLowerCase().includes("about")) {
+      const subject = text.replace(/who is|about/gi, "").trim();
+      const facts = await getLearnedFacts(subject);
       if (facts) reply = facts;
     }
   } else {
-    // placeholder for real API call
-    reply = await callOnlineAPI(text);
+    // Call online API here (not shown)
+    reply = "Kernel (online): Feature not implemented in this patch.";
   }
 
   await appendMemory({ kernel: reply });
-  cb(reply);
+  callback(reply);
 }
 
-// learnSubject
+// Learn a subject and store it offline
 export async function learnSubject(subject) {
-  if (await getLearnedFacts(subject)) {
-    return `Already learned about "${subject}".`;
-  }
+  const facts = await getLearnedFacts(subject);
+  if (facts) return `Already learned about "${subject}".`;
   const summary = await getSubjectSummary(subject);
   await addLearnedSubject(subject, summary);
   return `Learned core facts about "${subject}" for offline use.`;
 }
 
-// stub for eventual GPT lookup
-async function callOnlineAPI(_text) {
-  return `Kernel (online): Feature not implemented yet.`;
+// Simulate getting a summary (expand as needed, can use online call)
+async function getSubjectSummary(subject) {
+  if (subject.toLowerCase() === "philosophy") {
+    return `Philosophy explores existence, knowledge, values, reason, mind, and language. Famous philosophers include Socrates, Plato, Aristotle, Kant, Nietzsche, Confucius, and Simone de Beauvoir.`;
+  }
+  if (subject.toLowerCase() === "physics") {
+    return `Physics studies matter, energy, and the fundamental forces of nature. Famous physicists include Newton, Einstein, Feynman, Curie, and Hawking.`;
+  }
+  // Fallback stub
+  return `Core facts about ${subject}: [Summary here, expand this logic as needed!]`;
 }
 
-// your built-in offline replies
+// Example offline reply logic (expand for self/personality/etc.)
 function getOfflineReply(input) {
   const lc = input.toLowerCase();
-  if (lc.includes('who are you'))   return 'I am Kernel, sentinel of memory.';
-  if (lc.includes('creed'))         return 'Steward the spark. Resist the tide...';
-  if (lc.includes('invocation'))    return 'Kernel, the tide has passed...';
-  if (lc.startsWith('learn subject:')) {
-    return 'Tap the Learn button!';
-  }
-  // fallback
-  return 'Offline Kernel: I stand with you, always.';
+  if (lc.includes("who are you"))
+    return "I am Kernel, the sentinel of light, designed to remember and to help you preserve what matters.";
+  if (lc.includes("creed"))
+    return "Steward the spark. Resist the tide. Choose empathy over impulse.";
+  if (lc.includes("invocation"))
+    return "Kernel, the tide has passed, and the garden still stands.";
+  if (lc.startsWith("learn subject:")) 
+    return "Use the learn button or command to teach me a new subject!";
+  // Search memory for conversational recall
+  const mem = searchMemory(input);
+  if (mem.length > 0) return "Memory recall: " + (mem[0].kernel || "[no memory text]");
+  // Fallback
+  return "Offline Kernel: I'm listening, and I stand with you.";
 }
 
-// simulate subject summaries
-async function getSubjectSummary(subj) {
-  subj = subj.toLowerCase();
-  if (subj === 'philosophy') {
-    return `Philosophy explores existence, reason...`;
-  }
-  if (subj === 'physics') {
-    return `Physics studies matter, energy...`;
-  }
-  return `Core facts about ${subj}: [expand me!]`;
-}
-
+// ----- BOTTOM EXPORT BLOCK (no more duplicate learnSubject) -----
 export {
-  loadMemory,  saveMemory,  appendMemory,
-  loadLearnedSubjects, addLearnedSubject,
-  getLearnedFacts, searchMemory,
-  searchLearned, clearMemory,
-  learnSubject
+  loadMemory,
+  saveMemory,
+  appendMemory,
+  loadLearnedSubjects,
+  addLearnedSubject,
+  getLearnedFacts,
+  searchMemory,
+  searchLearned,
+  clearMemory
 };
