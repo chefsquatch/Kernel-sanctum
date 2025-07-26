@@ -25,28 +25,28 @@ export function saveApiKey(key) {
 }
 
 export async function sendKernelMessage(text, callback) {
-  appendMemory({ user: text });
+  await appendMemory({ user: text });
 
   let reply;
   if (MODE === "offline") {
     reply = getOfflineReply(text);
     if (text.toLowerCase().startsWith("who is") || text.toLowerCase().includes("about")) {
-      const facts = getLearnedFacts(text.replace(/who is|about/gi, "").trim());
+      const facts = await getLearnedFacts(text.replace(/who is|about/gi, "").trim());
       if (facts) reply = facts;
     }
   } else {
     reply = "Kernel (online): Feature not implemented in this patch.";
   }
 
-  appendMemory({ kernel: reply });
+  await appendMemory({ kernel: reply });
   callback(reply);
 }
 
 export async function learnSubject(subject) {
-  const facts = getLearnedFacts(subject);
+  const facts = await getLearnedFacts(subject);
   if (facts) return `Already learned about "${subject}".`;
   const summary = await getSubjectSummary(subject);
-  addLearnedSubject(subject, summary);
+  await addLearnedSubject(subject, summary);
   return `Learned core facts about "${subject}" for offline use.`;
 }
 
