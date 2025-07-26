@@ -1,65 +1,39 @@
 // src/smartMemory.js
-import * as FS from './kernelFS.js';
 
-// Maximum chat entries to keep (prune older)
-const MAX_CHAT = 500;
+import { readJSON, writeJSON, deleteFile } from './deviceStorage.js';
 
-export async function loadMemory() {
-  return await FS.loadFile(FS.CHAT_PATH, []);
+const CHAT_FILE     = 'chat.json';
+const SUBJECTS_FILE = 'subjects.json';
+
+// ——— Chat memory ———
+export function loadMemory() {
+  return readJSON(CHAT_FILE, []);
+}
+export function saveMemory(msgs) {
+  writeJSON(CHAT_FILE, msgs.slice(-500));
+}
+export function appendMemory(msg) {
+  const arr = loadMemory();
+  arr.push(msg);
+  saveMemory(arr);
 }
 
-export async function saveMemory(messages) {
-  // prune to last MAX_CHAT
-  const pruned = messages.slice(-MAX_CHAT);
-  await FS.saveFile(FS.CHAT_PATH, pruned);
+// ——— Learned subjects ———
+export function loadLearnedSubjects() {
+  return readJSON(SUBJECTS_FILE, {});
 }
-
-export async function appendMemory(entry) {
-  const arr = await loadMemory();
-  arr.push(entry);
-  await saveMemory(arr);
-}
-
-// Learned subjects map: { [subject:string]: facts:string }
-export async function loadLearnedSubjects() {
-  return await FS.loadFile(FS.SUBJECTS_PATH, {});
-}
-
-export async function saveLearnedSubjects(map) {
-  await FS.saveFile(FS.SUBJECTS_PATH, map);
-}
-
-export async function addLearnedSubject(subject, facts) {
-  const m = await loadLearnedSubjects();
+export function addLearnedSubject(subject, facts) {
+  const m = loadLearnedSubjects();
   m[subject.toLowerCase()] = facts;
-  await saveLearnedSubjects(m);
+  writeJSON(SUBJECTS_FILE, m);
 }
-
-export async function getLearnedFacts(subject) {
-  const m = await loadLearnedSubjects();
+export function getLearnedFacts(subject) {
+  const m = loadLearnedSubjects();
   return m[subject.toLowerCase()] || null;
 }
 
-export async function searchMemory(query) {
-  const arr = await loadMemory();
-  return arr.filter(msg => {
-    const q = query.toLowerCase();
-    return (msg.user  && msg.user.toLowerCase().includes(q)) ||
-           (msg.kernel && msg.kernel.toLowerCase().includes(q));
-  });
-}
-
-export async function searchLearned(query) {
-  const m = await loadLearnedSubjects();
-  const q = query.toLowerCase();
-  return Object.entries(m)
-    .filter(([subj, facts]) =>
-      subj.includes(q) || facts.toLowerCase().includes(q)
-    )
-    .map(([subject, facts]) => ({ subject, facts }));
-}
-
-export async function clearMemory() {
-  await FS.removeFile(FS.CHAT_PATH);
-  await FS.removeFile(FS.SUBJECTS_PATH);
+// ——— Wipe all ———
+export function clearMemory() {
+  deleteFile(CHAT_FILE);
+  deleteFile(SUBJECTS_FILE);
 }
