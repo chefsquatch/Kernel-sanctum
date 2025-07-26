@@ -389,4 +389,7 @@ function saveApiKey(key) {
 }
 function getApiKey() { return apiKey; }
 function getMemory() { return memory; }
-function getArchive()
+function getArchive() { return archive; }
+function clearArchive() {
+  archive = [];
+  localStorage.setItem
