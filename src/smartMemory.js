@@ -33,8 +33,9 @@ export function searchMemory(query) {
   const messages = loadMemory();
   return messages.filter(
     msg =>
-      (msg.user && msg.user.toLowerCase().includes(query.toLowerCase())) ||
-      (msg.kernel && msg.kernel.toLowerCase().includes(query.toLowerCase()))
+      ((msg.user && msg.user.toLowerCase().includes(query.toLowerCase())) ||
+      (msg.kernel && msg.kernel.toLowerCase().includes(query.toLowerCase())))
+      && msg.kernel // Only keep messages that have a kernel reply
   );
 }
 
