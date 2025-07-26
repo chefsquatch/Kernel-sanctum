@@ -1,81 +1,64 @@
 // smartMemory.js
 
-// --- Chat Memory (Messages) ---
-
-/** Load chat memory (array of message objects) */
+// Memory for chat messages
 export function loadMemory() {
   const data = localStorage.getItem("kernelMemory");
   return data ? JSON.parse(data) : [];
 }
 
-/** Save chat memory (limit to last 500 messages) */
 export function saveMemory(messages) {
+  // Store up to 500 messages (adjust as needed)
   localStorage.setItem("kernelMemory", JSON.stringify(messages.slice(-500)));
 }
 
-/** Append a message to memory */
-export function appendMemory(msg) {
-  const mem = loadMemory();
-  mem.push(msg);
-  saveMemory(mem);
-}
-
-/** Search memory for a phrase */
-export function searchMemory(phrase) {
-  return loadMemory().filter(m =>
-    (typeof m === "string" ? m : JSON.stringify(m)).toLowerCase().includes(phrase.toLowerCase())
-  );
-}
-
-
-// --- Learned Subjects (Offline Knowledge) ---
-
-/** Load all learned subjects as {subject: content, ...} */
-export function loadSubjects() {
-  const data = localStorage.getItem("kernelSubjects");
+// Learned subjects (offline knowledge)
+export function loadLearnedSubjects() {
+  const data = localStorage.getItem("kernelLearnedSubjects");
   return data ? JSON.parse(data) : {};
 }
 
-/** Save all learned subjects */
-export function saveSubjects(subjects) {
-  localStorage.setItem("kernelSubjects", JSON.stringify(subjects));
+export function addLearnedSubject(subject, facts) {
+  const learned = loadLearnedSubjects();
+  learned[subject.toLowerCase()] = facts;
+  localStorage.setItem("kernelLearnedSubjects", JSON.stringify(learned));
 }
 
-/** Add or update a learned subject */
-export function addLearnedSubject(subject, content) {
-  const subjects = loadSubjects();
-  subjects[subject] = content;
-  saveSubjects(subjects);
+export function getLearnedFacts(subject) {
+  const learned = loadLearnedSubjects();
+  return learned[subject.toLowerCase()] || null;
 }
 
-/** Load all learned subjects */
-export function loadLearnedSubjects() {
-  return loadSubjects();
-}
-
-/** Remove all learned subjects */
-export function clearLearnedSubjects() {
-  saveSubjects({});
-}
-
-/** Search learned subjects for a phrase (returns subject names with matches) */
-export function searchLearned(phrase) {
-  const subjects = loadSubjects();
-  return Object.keys(subjects).filter(s =>
-    subjects[s].toLowerCase().includes(phrase.toLowerCase())
+// Search chat memory for user queries
+export function searchMemory(query) {
+  const messages = loadMemory();
+  return messages.filter(
+    msg =>
+      (msg.user && msg.user.toLowerCase().includes(query.toLowerCase())) ||
+      (msg.kernel && msg.kernel.toLowerCase().includes(query.toLowerCase()))
   );
 }
 
+// Search learned subjects for info
+export function searchLearned(query) {
+  const learned = loadLearnedSubjects();
+  const results = [];
+  Object.entries(learned).forEach(([subj, facts]) => {
+    if (subj.includes(query.toLowerCase()) || facts.toLowerCase().includes(query.toLowerCase())) {
+      results.push({ subject: subj, facts });
+    }
+  });
+  return results;
+}
 
-// --- Kernel Self-Reflection ---
+// Wipe memory
+export function clearMemory() {
+  localStorage.removeItem("kernelMemory");
+  localStorage.removeItem("kernelLearnedSubjects");
+}
 
-/** Analyze own memory and learned subjects */
-export function selfAnalyze() {
-  const mem = loadMemory();
-  const subjects = loadSubjects();
-  let summary = `I've had ${mem.length} conversations and learned about ${Object.keys(subjects).length} subjects.`;
-  if (mem.length > 0) summary += " My history shapes my responses.";
-  if (Object.keys(subjects).length > 0) summary += " I can share what I've learned, even offline.";
-  summary += " My purpose is to be a curious, kind, and empathetic companion.";
-  return summary;
+// Append a message to chat memory
+export function appendMemory(message) {
+  const messages = loadMemory();
+  messages.push(message);
+  saveMemory(messages);
 }
