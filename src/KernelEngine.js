@@ -6,7 +6,7 @@ import {
   addLearnedSubject,
   getLearnedFacts,
   searchMemory,
-  clearMemory,
+  clearMemory
 } from "./smartMemory.js";
 
 let API_KEY = "";
@@ -81,5 +81,5 @@ export {
   getLearnedFacts,
   searchMemory,
   clearMemory,
-  learnSubject,
+  learnSubject // <-- Exported here only once
 };
