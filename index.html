@@ -1,128 +1,67 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Kernel AI – All Features Demo</title>
+  <meta charset="utf-8" />
+  <title>Kernel AI</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    /* — your existing CSS exactly as before — */
-    body { background:#1c222b; color:#e3ffe9; font-family:Inter,sans-serif; margin:0; }
-    /* … copy all your CSS from .kernel-container through @media … */
+    /* … your existing styles … */
   </style>
 </head>
 <body>
-  <div class="kernel-container" id="kernel-app">
-    <div class="header">
-      <img src="https://api.dicebear.com/8.x/bottts-neutral/svg?seed=kernel"
-           class="avatar" alt="Kernel AI" />
-      <span class="title">Kernel AI</span>
-      <button id="settingsBtn" class="settings-btn">&#9881;</button>
-    </div>
-
-    <div class="features-bar">
-      <button id="learnBtn" class="feature-btn">Learn</button>
-      <div id="loadingSpinner" class="loading-spinner"></div>
-    </div>
-
-    <div id="chatbox" class="chatbox"></div>
-
-    <form id="chat-form" class="input-row">
-      <input id="input" autocomplete="off" placeholder="Type a message…" />
-      <button type="submit" class="send-btn">Send</button>
-    </form>
-  </div>
-
-  <div id="settingsModal" class="settings-modal">
-    <div class="settings-box">
-      <button id="closeSettings" class="settings-close">&times;</button>
-      <h3>Settings</h3>
-      <label>
-        API Key:
-        <input id="apiKeyInput" type="password" placeholder="OpenAI API Key" />
-      </label>
-      <label>
-        Mode:
-        <select id="modeSelect">
-          <option value="offline">Offline</option>
-          <option value="online">Online (API)</option>
-        </select>
-      </label>
-      <button id="saveSettings" class="feature-btn">Save</button>
-    </div>
-  </div>
+  <div id="chatbox"></div>
+  <input id="input" placeholder="Type…" />
+  <button id="send">Send</button>
+  <button id="learn">Learn</button>
+  <button id="settings">⚙️</button>
 
   <script type="module">
-    import {
-      sendKernelMessage,
-      learnSubject,
-      saveApiKey,
-      getApiKey,
-      setMode
-    } from './src/KernelEngine.js';
+    import { sendKernelMessage, learnSubject, setMode, saveApiKey, getApiKey } from './src/KernelEngine.js';
 
-    const chatbox       = document.getElementById('chatbox');
-    const spinner       = document.getElementById('loadingSpinner');
-    const inputField    = document.getElementById('input');
-    const settingsModal = document.getElementById('settingsModal');
+    const chatbox = document.getElementById('chatbox');
+    const input   = document.getElementById('input');
 
-    let messages = [{ kernel: 'Welcome! How can I help you today?' }];
+    let messages = [{ kernel: 'Welcome! How can I help you?' }];
 
-    function renderChat() {
+    function render() {
       chatbox.innerHTML = '';
-      for (const m of messages) {
-        if (m.user)   chatbox.innerHTML += `<div class="user-msg">${m.user}</div>`;
-        if (m.kernel) chatbox.innerHTML += `<div class="kernel-msg">${m.kernel}</div>`;
-      }
+      messages.forEach(m => {
+        const div = document.createElement('div');
+        div.className = m.user ? 'user-msg' : 'kernel-msg';
+        div.textContent = m.user || m.kernel;
+        chatbox.appendChild(div);
+      });
       chatbox.scrollTop = chatbox.scrollHeight;
     }
+    render();
 
-    renderChat();
-
-    document.getElementById('chat-form').onsubmit = async e => {
-      e.preventDefault();
-      const text = inputField.value.trim();
+    document.getElementById('send').onclick = async () => {
+      const text = input.value.trim();
       if (!text) return;
-      messages.push({ user: text });
-      renderChat();
-      inputField.value = '';
-      spinner.style.display = 'inline-block';
-
+      messages.push({ user: text }); render();
+      input.value = '';
       await sendKernelMessage(text, reply => {
         messages.push({ kernel: reply });
-        renderChat();
-        spinner.style.display = 'none';
+        render();
       });
     };
 
-    document.getElementById('learnBtn').onclick = async () => {
-      const subj = prompt('What subject should I learn?');
-      if (!subj) return;
-      messages.push({ user: `learn subject: ${subj}` });
-      renderChat();
-      spinner.style.display = 'inline-block';
-
-      const reply = await learnSubject(subj)
-        .catch(() => 'Oops, something went wrong while learning.');
-      messages.push({ kernel: reply });
-      renderChat();
-      spinner.style.display = 'none';
+    document.getElementById('learn').onclick = async () => {
+      const subject = prompt('What subject?');
+      if (!subject) return;
+      messages.push({ user: 'learn subject: ' + subject }); render();
+      const r = await learnSubject(subject);
+      messages.push({ kernel: r }); render();
     };
 
-    // Settings modal
-    document.getElementById('settingsBtn').onclick = () => {
-      settingsModal.classList.add('active');
-      document.getElementById('apiKeyInput').value = getApiKey();
-    };
-    document.getElementById('closeSettings').onclick = () => {
-      settingsModal.classList.remove('active');
-    };
-    document.getElementById('saveSettings').onclick = e => {
-      e.preventDefault();
-      saveApiKey(document.getElementById('apiKeyInput').value);
-      setMode(document.getElementById('modeSelect').value);
-      settingsModal.classList.remove('active');
-      messages.push({ kernel: 'Settings updated.' });
-      renderChat();
+    document.getElementById('settings').onclick = () => {
+      const k = prompt('API Key:', getApiKey()||'');
+      if (k !== null) {
+        saveApiKey(k);
+        setMode(k ? 'online' : 'offline');
+        messages.push({ kernel: 'Settings updated.' });
+        render();
+      }
     };
   </script>
 </body>
