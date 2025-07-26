@@ -8,28 +8,28 @@ import {
   searchMemory,
 } from "./smartMemory.js";
 
-// ——— API key & mode ———
-let API_KEY = "";
-let MODE = "offline";
+// ——— Persisted API key & mode ———
+let API_KEY = localStorage.getItem("kernelApiKey") || "";
+let MODE    = localStorage.getItem("kernelMode")   || "offline";
 
 export function setMode(m) {
   MODE = m;
+  localStorage.setItem("kernelMode", m);
 }
-export function getApiKey() {
-  return API_KEY;
+export function getMode() {
+  return MODE;
 }
 export function saveApiKey(key) {
   API_KEY = key;
+  localStorage.setItem("kernelApiKey", key);
 }
-// Expose mode so UI can read it
-export function getMode() {
-  return MODE;
+export function getApiKey() {
+  return API_KEY;
 }
 
 // ——— Offline-only reply logic ———
 function getOfflineReply(text) {
   const lc = text.toLowerCase().trim();
-
   if (lc.includes("who are you"))
     return "I am Kernel, the sentinel of light, designed to remember and help you.";
   if (lc.includes("creed"))
@@ -59,25 +59,20 @@ function getOfflineReply(text) {
 
 // ——— Send a message (offline or online) ———
 export async function sendKernelMessage(text, callback) {
-  // Debug log
   console.log("▶ sendKernelMessage()", { MODE, hasApiKey: !!API_KEY, text });
-
-  // 1) store user message
   appendMemory({ user: text });
 
   let reply;
 
   if (MODE === "offline") {
-    // purely offline
     reply = getOfflineReply(text);
 
   } else {
-    // online mode via OpenAI with robust fallback
     if (!API_KEY) {
       reply = "Error: No API key set.";
     } else {
       try {
-        // build chat history for context
+        // build chat history
         const history = loadMemory()
           .map((m) =>
             m.user
@@ -122,18 +117,16 @@ export async function sendKernelMessage(text, callback) {
 
       } catch (err) {
         console.error("KernelEngine ▶ online chat error:", err);
-        // fallback to offline responder
         reply = getOfflineReply(text);
       }
     }
   }
 
-  // 2) store kernel reply
   appendMemory({ kernel: reply });
   callback(reply);
 }
 
-// ——— Teach Kernel a new subject offline ———
+// ——— Teach Kernel a subject offline ———
 export async function learnSubject(subject) {
   subject = subject.trim();
   if (!subject) return "No subject supplied.";
@@ -142,8 +135,7 @@ export async function learnSubject(subject) {
   if (existing)
     return `Already learned about "${subject}".`;
 
-  // create a simple summary
-  let summary = `Core facts about ${subject}: [expand this logic as needed]`;
+  let summary = `Core facts about ${subject}: [expand as needed]`;
   if (subject.toLowerCase() === "philosophy") {
     summary = `Philosophy explores existence, knowledge, values, reason, mind, and language.`;
   }
