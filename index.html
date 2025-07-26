@@ -68,6 +68,7 @@
       background: #21282c;
       border-radius: 0 0 12px 12px;
       box-shadow: 0 2px 12px #0002;
+      align-items: center;
     }
     .feature-btn {
       background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
@@ -83,6 +84,20 @@
     }
     .feature-btn:hover {
       background: linear-gradient(90deg, #68e2b1 0%, #4ad681 100%);
+    }
+    .loading-spinner {
+      border: 4px solid #232936;
+      border-top: 4px solid #4ad681;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      margin-left: 10px;
+      display: none;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg);}
+      100% { transform: rotate(360deg);}
     }
     .chatbox {
       flex: 1;
@@ -150,19 +165,6 @@
     }
     .send-btn:hover {
       background: linear-gradient(90deg, #68e2b1 0%, #4ad681 100%);
-    }
-    .loading-spinner {
-      border: 4px solid #232936;
-      border-top: 4px solid #4ad681;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      animation: spin 1s linear infinite;
-      margin-left: 10px;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg);}
-      100% { transform: rotate(360deg);}
     }
     .settings-modal {
       display: none;
@@ -240,7 +242,7 @@
       <button class="feature-btn" id="learnBtn" title="Learn Subject">
         Learn
       </button>
-      <div id="loadingSpinner" style="display:none" class="loading-spinner" title="Loading..."></div>
+      <div id="loadingSpinner" class="loading-spinner" title="Loading..."></div>
     </div>
     <div class="chatbox" id="chatbox"></div>
     <form class="input-row" id="chat-form">
@@ -249,7 +251,6 @@
     </form>
   </div>
 
-  <!-- Settings Modal -->
   <div class="settings-modal" id="settingsModal">
     <div class="settings-box">
       <button class="settings-close" id="closeSettings">&times;</button>
@@ -278,9 +279,11 @@
       learnSubject,
     } from "./src/KernelEngine.js";
 
-    let messages = [{ kernel: "Welcome! How can I help you today?" }];
     const chatbox = document.getElementById("chatbox");
     const loadingSpinner = document.getElementById("loadingSpinner");
+    const inputField = document.getElementById("input");
+
+    let messages = [{ kernel: "Welcome! How can I help you today?" }];
 
     function renderChat() {
       chatbox.innerHTML = "";
@@ -291,17 +294,18 @@
       });
       chatbox.scrollTop = chatbox.scrollHeight;
     }
+
     renderChat();
 
-    document.getElementById("chat-form").onsubmit = async function (e) {
+    document.getElementById("chat-form").onsubmit = async (e) => {
       e.preventDefault();
-      const input = document.getElementById("input");
-      const text = input.value.trim();
+      const text = inputField.value.trim();
       if (!text) return;
       messages.push({ user: text });
       renderChat();
-      input.value = "";
+      inputField.value = "";
       loadingSpinner.style.display = "inline-block";
+
       await sendKernelMessage(text, (reply) => {
         messages.push({ kernel: reply });
         renderChat();
@@ -309,7 +313,7 @@
       });
     };
 
-    document.getElementById("learnBtn").onclick = async function () {
+    document.getElementById("learnBtn").onclick = async () => {
       let subj = prompt("What subject should I learn?");
       if (!subj) return;
       messages.push({ user: "learn subject: " + subj });
@@ -318,15 +322,26 @@
       try {
         const reply = await learnSubject(subj);
         messages.push({ kernel: reply });
-      } catch (err) {
+      } catch {
         messages.push({ kernel: "Oops, something went wrong while learning." });
       }
       renderChat();
       loadingSpinner.style.display = "none";
     };
 
-    document.getElementById("settingsBtn").onclick = function () {
+    document.getElementById("settingsBtn").onclick = () => {
       document.getElementById("settingsModal").classList.add("active");
       document.getElementById("apiKeyInput").value = getApiKey();
     };
-    document.getElementById("closeSettings").onclick = function
+
+    document.getElementById("closeSettings").onclick = () => {
+      document.getElementById("settingsModal").classList.remove("active");
+    };
+
+    document.getElementById("saveSettings").onclick = (e) => {
+      e.preventDefault();
+      const apiKey = document.getElementById("apiKeyInput").value;
+      const mode = document.getElementById("modeSelect").value;
+      saveApiKey(apiKey);
+      setMode(mode);
+      document.getElementById("settingsModal
