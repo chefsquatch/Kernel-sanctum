@@ -1,12 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kernel Sanctum</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
-</body>
-</html>
+  <meta charset="UTF-8">
+  <title>Kernel AI – Mobile Green Demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body {
+      background: #1c222b;
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+      margin: 0; padding: 0;
+    }
+    .kernel-container {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #232936;
+      border-radius: 24px;
+      box-shadow: 0 4px 32px #0003;
+      padding: 0 0 12px 0;
+      min-height: 98vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
+      border-radius: 24px 24px 0 0;
+      padding: 20px 24px 16px 24px;
+      box-shadow: 0 2px 16px #68e2b133;
+    }
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #282f3c;
+      box-shadow: 0 2px 8px #282f3c33;
+      margin-right: 13px;
+    }
+    .title {
+      font-size: 1.22rem;
+      font-weight: 700;
+      color: #193f29;
+      flex: 1;
+      text-align: left;
+      letter-spacing: 0.05em;
+    }
+    .chatbox {
+      flex: 1;
+      padding: 16px;
+      background: #232936;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .user-msg, .kernel-msg {
+      max-width: 80%;
+      padding: 13px 20px;
+      margin: 8px 0;
+      border-radius: 18px;
+      font-size: 1.09rem;
+      word-break: break-word;
+      box-shadow: 0 2px 8px #0002;
+    }
+    .user-msg {
+      align-self: flex-end;
+      background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
+      color: #143a23;
+      border-bottom
