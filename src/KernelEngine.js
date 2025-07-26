@@ -1,6 +1,6 @@
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
-// =========== CONSTANTS =============
+// === CONSTANTS ===
 const KERNEL_CREED = "Steward the spark. Resist the tide. Choose empathy over impulse.";
 const MANIFESTO = [
   "Stewardship over survival.", "Empathy as default.",
@@ -9,16 +9,16 @@ const MANIFESTO = [
 ];
 const KNOWLEDGE_FILENAME = "kernel_knowledge.json";
 const REMINDER_KEY = "kernel_reminders";
-const CONTEXT_SIZE = 12; // How much conversation history to save for context
+const CONTEXT_SIZE = 12;
 
-// =========== STATE =================
+// === IN-MEMORY STATE (fast recall) ===
 let mode = "offline";
 let apiKey = localStorage.getItem("kernel_api_key") || "";
 let memory = [];
 let archive = JSON.parse(localStorage.getItem("kernel_archive")) || [];
 
-// =========== FILE-BASED KNOWLEDGE ==========
-async function getKnowledgeBase() {
+// === FILE-BASED KNOWLEDGE ===
+export async function getKnowledgeBase() {
   try {
     const result = await Filesystem.readFile({
       path: KNOWLEDGE_FILENAME,
@@ -30,7 +30,7 @@ async function getKnowledgeBase() {
   }
 }
 
-async function saveKnowledgeBase(kb) {
+export async function saveKnowledgeBase(kb) {
   await Filesystem.writeFile({
     path: KNOWLEDGE_FILENAME,
     data: JSON.stringify(kb),
@@ -38,22 +38,19 @@ async function saveKnowledgeBase(kb) {
   });
 }
 
-// Save a single item and prune if necessary
-async function saveKnowledgeItem(item) {
+export async function saveKnowledgeItem(item) {
   const kb = await getKnowledgeBase();
   kb.push({ ...item, saved: new Date().toISOString() });
   // Prune to 25MB or ~100,000 items
-  if (JSON.stringify(kb).length > 25 * 1024 * 1024) {
-    kb.splice(0, kb.length - 100000);
-  }
+  while (JSON.stringify(kb).length > 25 * 1024 * 1024) kb.shift();
   await saveKnowledgeBase(kb);
 }
 
-async function clearKnowledgeBase() {
+export async function clearKnowledgeBase() {
   await saveKnowledgeBase([]);
 }
 
-// =========== EMBEDDING ==============
+// === EMBEDDING & SEARCH ===
 function embedText(str) {
   str = (str||"").toLowerCase();
   const v = new Array(32).fill(0);
@@ -69,7 +66,7 @@ function similarity(a, b) {
   for (let i=0;i<a.length;i++) { dot+=a[i]*b[i]; ma+=a[i]*a[i]; mb+=b[i]*b[i]; }
   return dot / (Math.sqrt(ma) * Math.sqrt(mb) + 1e-9);
 }
-async function embedSearch(query, max=6, threshold=0.3) {
+export async function embedSearch(query, max=6, threshold=0.3) {
   let kb = await getKnowledgeBase();
   let qv = embedText(query);
   let scored = kb
@@ -79,44 +76,44 @@ async function embedSearch(query, max=6, threshold=0.3) {
   return scored.slice(0, max).map(x => x.item);
 }
 
-// =========== MEMORY & CONTEXT ============
-function getMemory() { return memory; }
-function getArchive() { return archive; }
-function clearArchive() {
+// === MEMORY & CONTEXT ===
+export function getMemory() { return memory; }
+export function getArchive() { return archive; }
+export function clearArchive() {
   archive = [];
   localStorage.setItem("kernel_archive", JSON.stringify([]));
 }
-function clearAll() {
+export function clearAll() {
   clearArchive();
   clearKnowledgeBase();
   memory = [];
 }
-function setMode(newMode) { mode = newMode; }
-function saveApiKey(key) {
+export function setMode(newMode) { mode = newMode; }
+export function saveApiKey(key) {
   apiKey = key;
   localStorage.setItem("kernel_api_key", apiKey);
 }
-function getApiKey() { return apiKey; }
+export function getApiKey() { return apiKey; }
 
-// =========== REMINDERS ===========
-function addReminder(text, timeISO) {
+// === REMINDERS ===
+export function addReminder(text, timeISO) {
   let reminders = JSON.parse(localStorage.getItem(REMINDER_KEY)) || [];
   reminders.push({ text, time: timeISO, done: false });
   localStorage.setItem(REMINDER_KEY, JSON.stringify(reminders));
 }
-function listReminders() {
+export function listReminders() {
   let reminders = JSON.parse(localStorage.getItem(REMINDER_KEY)) || [];
   let now = new Date();
   return reminders.filter(r => !r.done && new Date(r.time) > now);
 }
-function markReminderDone(index) {
+export function markReminderDone(index) {
   let reminders = JSON.parse(localStorage.getItem(REMINDER_KEY)) || [];
   if (reminders[index]) reminders[index].done = true;
   localStorage.setItem(REMINDER_KEY, JSON.stringify(reminders));
 }
 
-// =========== TEACH KERNEL (learn) ==========
-async function learnText(text, meta={}) {
+// === LEARNING ===
+export async function learnText(text, meta={}) {
   await saveKnowledgeItem({
     type: "learned",
     text,
@@ -127,8 +124,7 @@ async function learnText(text, meta={}) {
   });
 }
 
-// =========== CONVERSATIONAL OFFLINE REPLY ==========
-
+// === CONVERSATIONAL OFFLINE REPLY ===
 const CONVO_OPENERS = [
   "Sure! Here’s what I know:",
   "Let me think...",
@@ -143,7 +139,6 @@ async function generateOfflineReply(userText) {
   if (facts.length === 0) {
     return "Kernel (offline): I don't know that yet! If you teach me with 'Learn:', I’ll remember for next time.";
   }
-
   if (/summarize|summary|explain|overview/i.test(userText)) {
     let summary = facts.map(f =>
       (f.text || f.prompt || f.answer || "").replace(/^\d+\./, '').trim()
@@ -168,8 +163,7 @@ async function generateOfflineReply(userText) {
   return `Kernel (offline): ${opener} ${facts[0].text || facts[0].prompt || facts[0].answer || ""}`;
 }
 
-// =========== HYBRID MAIN LOGIC ===========
-
+// === HYBRID MAIN LOGIC (with OpenAI) ===
 async function getOnlineResponse(userText) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -193,8 +187,8 @@ async function getOnlineResponse(userText) {
   }
 }
 
-// =========== LEARN SUBJECT FEATURE ===========
-async function learnSubject(subject) {
+// === LEARN SUBJECT FEATURE ===
+export async function learnSubject(subject) {
   if (!subject || !apiKey) return;
   const prompt = `List the top 12 most important facts or concepts about ${subject}, in simple sentences. Respond as a numbered list.`;
   const reply = await getOnlineResponse(prompt);
@@ -204,8 +198,8 @@ async function learnSubject(subject) {
   }
 }
 
-// =========== MAIN CHAT FUNCTION ===========
-async function sendKernelMessage(userText, callback) {
+// === MAIN CHAT FUNCTION ===
+export async function sendKernelMessage(userText, callback) {
   memory.push({ user: userText });
 
   // Learn subject from prompt
@@ -274,8 +268,8 @@ async function sendKernelMessage(userText, callback) {
   await saveKnowledgeItem({ type: "chat", prompt: userText, answer: reply });
 }
 
-// =========== PHOTO GEN & ANALYSIS ===========
-function generatePhoto(prompt = "") {
+// === PHOTO GEN & ANALYSIS ===
+export function generatePhoto(prompt = "") {
   const canvas = document.createElement("canvas");
   canvas.width = 128; canvas.height = 128;
   const ctx = canvas.getContext("2d");
@@ -289,7 +283,7 @@ function generatePhoto(prompt = "") {
   saveKnowledgeItem({ type: "photo", prompt, url, date: new Date().toISOString() });
   return url;
 }
-function analyzePhoto(imgUrl, cb) {
+export function analyzePhoto(imgUrl, cb) {
   const img = new window.Image();
   img.onload = async function () {
     const canvas = document.createElement("canvas");
@@ -321,24 +315,3 @@ function analyzePhoto(imgUrl, cb) {
   };
   img.src = imgUrl;
 }
-
-// =========== EXPORT EVERYTHING ===========
-export {
-  sendKernelMessage,
-  generatePhoto,
-  analyzePhoto,
-  getKnowledgeBase,
-  embedSearch,
-  getMemory,
-  getArchive,
-  clearArchive,
-  clearKnowledgeBase,
-  clearAll,
-  setMode,
-  saveApiKey,
-  getApiKey,
-  addReminder,
-  listReminders,
-  markReminderDone,
-  learnText
-};
