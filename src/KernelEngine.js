@@ -11,7 +11,7 @@ const KNOWLEDGE_FILENAME = "kernel_knowledge.json";
 const REMINDER_KEY = "kernel_reminders";
 const CONTEXT_SIZE = 12;
 
-// === IN-MEMORY STATE (fast recall) ===
+// === IN-MEMORY STATE (for fast context) ===
 let mode = "offline";
 let apiKey = localStorage.getItem("kernel_api_key") || "";
 let memory = [];
@@ -41,7 +41,6 @@ export async function saveKnowledgeBase(kb) {
 export async function saveKnowledgeItem(item) {
   const kb = await getKnowledgeBase();
   kb.push({ ...item, saved: new Date().toISOString() });
-  // Prune to 25MB or ~100,000 items
   while (JSON.stringify(kb).length > 25 * 1024 * 1024) kb.shift();
   await saveKnowledgeBase(kb);
 }
@@ -244,7 +243,6 @@ export async function sendKernelMessage(userText, callback) {
       callback(reply);
       await saveKnowledgeItem({ type: "api_completion", prompt: userText, answer: reply, source: "openai" });
       await learnText(reply, { prompt: userText, source: "openai" });
-      // Store conversation as context for offline
       await saveKnowledgeItem({
         type: "conversation",
         prompt: userText,
