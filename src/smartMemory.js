@@ -4,7 +4,6 @@ const MEMORY_KEY   = "kernelMemory";
 const SUBJECTS_KEY = "kernelLearnedSubjects";
 
 // ——— Chat memory ———
-
 export function loadMemory() {
   const json = localStorage.getItem(MEMORY_KEY);
   return json ? JSON.parse(json) : [];
@@ -13,7 +12,7 @@ export function loadMemory() {
 export function saveMemory(messages) {
   localStorage.setItem(
     MEMORY_KEY,
-    JSON.stringify(messages.slice(-500))  // keep last 500
+    JSON.stringify(messages.slice(-500))
   );
 }
 
@@ -24,7 +23,6 @@ export function appendMemory(message) {
 }
 
 // ——— Learned subjects ———
-
 export function loadLearnedSubjects() {
   const json = localStorage.getItem(SUBJECTS_KEY);
   return json ? JSON.parse(json) : {};
@@ -41,8 +39,7 @@ export function getLearnedFacts(subject) {
   return learned[subject.toLowerCase()] || null;
 }
 
-// ——— Simple memory search ———
-
+// ——— Search ———
 export function searchMemory(query) {
   const lower = query.toLowerCase();
   return loadMemory().filter(
@@ -53,7 +50,6 @@ export function searchMemory(query) {
 }
 
 // ——— Wipe everything ———
-
 export function clearMemory() {
   localStorage.removeItem(MEMORY_KEY);
   localStorage.removeItem(SUBJECTS_KEY);
