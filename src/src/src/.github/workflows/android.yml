@@ -8,26 +8,33 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Node
-        uses: actions/setup-node@v2
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: 18
+
       - name: Install dependencies
-        run: npm install
-      - name: Build web
+        run: npm ci
+
+      - name: Build Web Assets
         run: npm run build
-      - name: Add Capacitor Android
+
+      - name: Install Capacitor CLI and Android platform
         run: |
           npm install @capacitor/cli @capacitor/android
-          npx cap add android
-      - name: Build APK
-        run: |
-          cd android
-          ./gradlew assembleDebug
-      - name: Upload APK
-        uses: actions/upload-artifact@v2
+          npx cap sync android
+
+      - name: Build Android APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v3
         with:
           name: Kernel-Sanctum-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
