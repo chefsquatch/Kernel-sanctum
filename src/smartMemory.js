@@ -1,64 +1,65 @@
-import { Plugins } from '@capacitor/core';
-const { Storage } = Plugins;
+// src/smartMemory.js
+import * as FS from './kernelFS.js';
 
-/** Load the chat memory array */
+// Maximum chat entries to keep (prune older)
+const MAX_CHAT = 500;
+
 export async function loadMemory() {
-  const { value } = await Storage.get({ key: 'kernelMemory' });
-  return value ? JSON.parse(value) : [];
+  return await FS.loadFile(FS.CHAT_PATH, []);
 }
 
-/** Persist up to the last 500 messages */
 export async function saveMemory(messages) {
-  await Storage.set({
-    key: 'kernelMemory',
-    value: JSON.stringify(messages.slice(-500)),
-  });
+  // prune to last MAX_CHAT
+  const pruned = messages.slice(-MAX_CHAT);
+  await FS.saveFile(FS.CHAT_PATH, pruned);
 }
 
-/** Load learned subjects map */
+export async function appendMemory(entry) {
+  const arr = await loadMemory();
+  arr.push(entry);
+  await saveMemory(arr);
+}
+
+// Learned subjects map: { [subject:string]: facts:string }
 export async function loadLearnedSubjects() {
-  const { value } = await Storage.get({ key: 'kernelLearnedSubjects' });
-  return value ? JSON.parse(value) : {};
+  return await FS.loadFile(FS.SUBJECTS_PATH, {});
 }
 
-/** Add/update a learned subject */
+export async function saveLearnedSubjects(map) {
+  await FS.saveFile(FS.SUBJECTS_PATH, map);
+}
+
 export async function addLearnedSubject(subject, facts) {
-  const learned = await loadLearnedSubjects();
-  learned[subject.toLowerCase()] = facts;
-  await Storage.set({
-    key: 'kernelLearnedSubjects',
-    value: JSON.stringify(learned),
+  const m = await loadLearnedSubjects();
+  m[subject.toLowerCase()] = facts;
+  await saveLearnedSubjects(m);
+}
+
+export async function getLearnedFacts(subject) {
+  const m = await loadLearnedSubjects();
+  return m[subject.toLowerCase()] || null;
+}
+
+export async function searchMemory(query) {
+  const arr = await loadMemory();
+  return arr.filter(msg => {
+    const q = query.toLowerCase();
+    return (msg.user  && msg.user.toLowerCase().includes(q)) ||
+           (msg.kernel && msg.kernel.toLowerCase().includes(q));
   });
 }
 
-/** Fetch facts for one subject */
-export async function getLearnedFacts(subject) {
-  const learned = await loadLearnedSubjects();
-  return learned[subject.toLowerCase()] || null;
+export async function searchLearned(query) {
+  const m = await loadLearnedSubjects();
+  const q = query.toLowerCase();
+  return Object.entries(m)
+    .filter(([subj, facts]) =>
+      subj.includes(q) || facts.toLowerCase().includes(q)
+    )
+    .map(([subject, facts]) => ({ subject, facts }));
 }
 
-/** Search chat memory (only messages with kernel replies) */
-export async function searchMemory(query) {
-  const msgs = await loadMemory();
-  return msgs.filter(
-    m =>
-      (
-        (m.user   && m.user.toLowerCase().includes(query.toLowerCase())) ||
-        (m.kernel && m.kernel.toLowerCase().includes(query.toLowerCase()))
-      ) &&
-      m.kernel
-  );
-}
-
-/** Wipe all stored memory & learned subjects */
 export async function clearMemory() {
-  await Storage.remove({ key: 'kernelMemory' });
-  await Storage.remove({ key: 'kernelLearnedSubjects' });
-}
-
-/** Append one message object {user:…,kernel:…} */
-export async function appendMemory(message) {
-  const msgs = await loadMemory();
-  msgs.push(message);
-  await saveMemory(msgs);
+  await FS.removeFile(FS.CHAT_PATH);
+  await FS.removeFile(FS.SUBJECTS_PATH);
 }
