@@ -1,5 +1,3 @@
-// KernelEngine.js
-
 import {
   loadMemory,
   saveMemory,
@@ -44,7 +42,6 @@ export async function sendKernelMessage(text, callback) {
   callback(reply);
 }
 
-// learnSubject declared normally, no 'export' here to avoid duplicate export error
 async function learnSubject(subject) {
   const facts = await getLearnedFacts(subject);
   if (facts) return `Already learned about "${subject}".`;
@@ -84,5 +81,5 @@ export {
   getLearnedFacts,
   searchMemory,
   clearMemory,
-  learnSubject,  // <-- exported only once here
+  learnSubject,  // export once here only
 };
