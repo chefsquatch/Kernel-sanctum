@@ -5,14 +5,218 @@
   <title>Kernel AI – All Features Demo</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    /* ... your existing CSS from before ... */
-    /* For brevity, I'm omitting it here but keep all your styles unchanged */
+    body {
+      background: #1c222b;
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .kernel-container {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #232936;
+      border-radius: 24px;
+      box-shadow: 0 4px 32px #0003;
+      padding: 0 0 12px 0;
+      min-height: 98vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
+      border-radius: 24px 24px 0 0;
+      padding: 20px 24px 16px 24px;
+      box-shadow: 0 2px 16px #68e2b133;
+    }
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #282f3c;
+      box-shadow: 0 2px 8px #282f3c33;
+      margin-right: 13px;
+    }
+    .title {
+      font-size: 1.22rem;
+      font-weight: 700;
+      color: #193f29;
+      flex: 1;
+      text-align: left;
+      letter-spacing: 0.05em;
+    }
+    .settings-btn {
+      background: #1c222bcc;
+      border: none;
+      color: #4ad681;
+      font-size: 1.32rem;
+      padding: 7px 14px;
+      border-radius: 12px;
+      margin-left: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .settings-btn:hover {
+      background: #2d352dcc;
+    }
+    .features-bar {
+      display: flex;
+      justify-content: flex-start;
+      gap: 14px;
+      padding: 8px 16px 4px 16px;
+      background: #21282c;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 2px 12px #0002;
+    }
+    .feature-btn {
+      background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
+      color: #1c2822;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 1.03rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #00000014;
+      transition: background 0.2s, color 0.2s;
+    }
+    .feature-btn:hover {
+      background: linear-gradient(90deg, #68e2b1 0%, #4ad681 100%);
+    }
+    .chatbox {
+      flex: 1;
+      padding: 16px;
+      background: #232936;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .user-msg,
+    .kernel-msg {
+      max-width: 80%;
+      padding: 13px 20px;
+      margin: 8px 0;
+      border-radius: 18px;
+      font-size: 1.09rem;
+      word-break: break-word;
+      box-shadow: 0 2px 8px #0002;
+    }
+    .user-msg {
+      align-self: flex-end;
+      background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
+      color: #143a23;
+      border-bottom-right-radius: 7px;
+    }
+    .kernel-msg {
+      align-self: flex-start;
+      background: #2c3e34;
+      color: #fff;
+      border-bottom-left-radius: 7px;
+    }
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 12px 0 0 0;
+      padding: 0 16px;
+    }
+    .input-row input {
+      flex: 1;
+      background: #27343a;
+      color: #e3ffe9;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 1.09rem;
+      box-shadow: 0 1px 4px #0001;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .input-row input:focus {
+      border: 1.5px solid #4ad681;
+    }
+    .send-btn {
+      background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
+      color: #143a23;
+      border: none;
+      border-radius: 10px;
+      padding: 13px 22px;
+      font-size: 1.07rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #00000016;
+      transition: background 0.2s, color 0.2s;
+    }
+    .send-btn:hover {
+      background: linear-gradient(90deg, #68e2b1 0%, #4ad681 100%);
+    }
+    .settings-modal {
+      display: none;
+      position: fixed;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      background: #1c222bcc;
+      z-index: 30;
+      align-items: center;
+      justify-content: center;
+    }
+    .settings-modal.active {
+      display: flex;
+    }
+    .settings-box {
+      background: #232936;
+      border-radius: 20px;
+      box-shadow: 0 2px 30px #000a;
+      padding: 32px 24px 20px 24px;
+      min-width: 300px;
+      color: #4ad681;
+      font-size: 1.1rem;
+    }
+    .settings-box input,
+    .settings-box select {
+      background: #27343a;
+      color: #e3ffe9;
+      border: none;
+      border-radius: 7px;
+      padding: 8px 10px;
+      font-size: 1.07rem;
+      margin: 5px 0 15px 0;
+      width: 100%;
+    }
+    .settings-close {
+      float: right;
+      background: #4ad681;
+      color: #222936;
+      border: none;
+      border-radius: 7px;
+      font-size: 1rem;
+      padding: 5px 15px;
+      cursor: pointer;
+      margin: -13px -13px 6px 0;
+    }
+    @media (max-width: 600px) {
+      .kernel-container {
+        min-height: 100vh;
+        border-radius: 0;
+      }
+      .header {
+        border-radius: 0;
+      }
+      .settings-box {
+        min-width: unset;
+        width: 90vw;
+      }
+    }
   </style>
 </head>
 <body>
   <div id="kernel-app" class="kernel-container">
     <div class="header">
-      <div class="avatar"></div>
+      <img src="https://api.dicebear.com/8.x/bottts-neutral/svg?seed=kernel" class="avatar" alt="Kernel AI" />
       <span class="title">Kernel AI</span>
       <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
     </div>
@@ -25,7 +229,6 @@
       <button class="send-btn" type="submit">Send</button>
     </form>
   </div>
-
   <div class="settings-modal" id="settingsModal">
     <div class="settings-box">
       <button class="settings-close" id="closeSettings">&times;</button>
@@ -44,7 +247,6 @@
       <button class="feature-btn" id="saveSettings">Save</button>
     </div>
   </div>
-
   <script>
     // Storage helpers
     function loadMemory() {
