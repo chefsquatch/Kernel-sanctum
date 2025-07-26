@@ -1,3 +1,5 @@
+// KernelEngine.js
+
 import {
   loadMemory,
   saveMemory,
@@ -5,7 +7,6 @@ import {
   loadLearnedSubjects,
   addLearnedSubject,
   getLearnedFacts,
-  searchMemory,
   clearMemory,
 } from "./smartMemory.js";
 
@@ -24,11 +25,8 @@ export function saveApiKey(key) {
   API_KEY = key;
 }
 
-async function callOpenAI(text) {
-  if (!API_KEY) {
-    throw new Error("API key not set");
-  }
-
+async function fetchOpenAIResponse(prompt) {
+  if (!API_KEY) throw new Error("No API key set.");
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -36,49 +34,34 @@ async function callOpenAI(text) {
       Authorization: `Bearer ${API_KEY}`,
     },
     body: JSON.stringify({
-      model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: text }],
-      max_tokens: 300,
+      model: "gpt-4o-mini", // Change as needed
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 200,
     }),
   });
-
   if (!response.ok) {
-    const errorDetails = await response.text();
-    throw new Error(`OpenAI API error: ${response.status} ${errorDetails}`);
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error?.message || `OpenAI API error: ${response.status}`);
   }
-
   const data = await response.json();
-  return data.choices[0].message.content.trim();
+  return data.choices[0].message.content;
 }
 
 export async function sendKernelMessage(text, callback) {
   await appendMemory({ user: text });
 
   let reply;
-
   if (MODE === "offline") {
-    // Offline mode: use learned facts or fallback reply
-    if (
-      text.toLowerCase().startsWith("learn subject:")
-    ) {
-      reply = "Use the learn button or command to teach me a new subject!";
-    } else if (text.toLowerCase().startsWith("who is") || text.toLowerCase().includes("about")) {
-      const subject = text.replace(/who is|about/gi, "").trim();
-      const facts = await getLearnedFacts(subject);
-      if (facts) {
-        reply = facts;
-      } else {
-        reply = getOfflineReply(text);
-      }
-    } else {
-      // fallback offline reply or reference chat memory
-      reply = getOfflineReply(text);
+    reply = getOfflineReply(text);
+    if (text.toLowerCase().startsWith("who is") || text.toLowerCase().includes("about")) {
+      const facts = await getLearnedFacts(text.replace(/who is|about/gi, "").trim());
+      if (facts) reply = facts;
     }
   } else if (MODE === "online") {
     try {
-      reply = await callOpenAI(text);
+      reply = await fetchOpenAIResponse(text);
     } catch (err) {
-      reply = "API Error: " + err.message;
+      reply = `API error: ${err.message}`;
     }
   } else {
     reply = "Unknown mode.";
@@ -88,8 +71,7 @@ export async function sendKernelMessage(text, callback) {
   callback(reply);
 }
 
-// Normal function, no export here to avoid duplicate exports
-async function learnSubject(subject) {
+export async function learnSubject(subject) {
   const facts = await getLearnedFacts(subject);
   if (facts) return `Already learned about "${subject}".`;
   const summary = await getSubjectSummary(subject);
@@ -104,7 +86,6 @@ async function getSubjectSummary(subject) {
   if (subject.toLowerCase() === "physics") {
     return `Physics studies matter, energy, and the fundamental forces of nature. Famous physicists include Newton, Einstein, Feynman, Curie, and Hawking.`;
   }
-  // Basic fallback summary, can expand later
   return `Core facts about ${subject}: [Summary here, expand as needed!]`;
 }
 
@@ -127,7 +108,6 @@ export {
   loadLearnedSubjects,
   addLearnedSubject,
   getLearnedFacts,
-  searchMemory,
   clearMemory,
-  learnSubject, // exported here once
+  learnSubject,
 };
