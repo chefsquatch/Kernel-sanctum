@@ -67,4 +67,121 @@
       align-self: flex-end;
       background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
       color: #143a23;
-      border-bottom
+      border-bottom-right-radius: 7px;
+    }
+    .kernel-msg {
+      align-self: flex-start;
+      background: #2c3e34;
+      color: #fff;
+      border-bottom-left-radius: 7px;
+    }
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 12px 0 0 0;
+      padding: 0 16px;
+    }
+    .input-row input {
+      flex: 1;
+      background: #27343a;
+      color: #e3ffe9;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 1.09rem;
+      box-shadow: 0 1px 4px #0001;
+      outline: none;
+      transition: border .2s;
+    }
+    .input-row input:focus { border: 1.5px solid #4ad681; }
+    .send-btn {
+      background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
+      color: #143a23;
+      border: none;
+      border-radius: 10px;
+      padding: 13px 22px;
+      font-size: 1.07rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #00000016;
+      transition: background .2s, color .2s;
+    }
+    .send-btn:hover { background: linear-gradient(90deg, #68e2b1 0%, #4ad681 100%); }
+    ::-webkit-scrollbar {
+      width: 7px;
+      background: #27343a;
+      border-radius: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2b3a30;
+      border-radius: 8px;
+    }
+    @media (max-width: 600px) {
+      .kernel-container { min-height: 100vh; border-radius: 0; }
+      .header { border-radius: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="kernel-app" class="kernel-container">
+    <div class="header">
+      <img src="https://api.dicebear.com/8.x/bottts-neutral/svg?seed=kernel" class="avatar" alt="Kernel AI">
+      <span class="title">Kernel AI</span>
+    </div>
+    <div class="chatbox" id="chatbox"></div>
+    <form class="input-row" id="chat-form">
+      <input id="input" autocomplete="off" placeholder="Type a message...">
+      <button class="send-btn" type="submit">Send</button>
+    </form>
+  </div>
+  <script type="module">
+    // Import your KernelEngine functions for real use:
+    // import { sendKernelMessage, getMemory } from './KernelEngine.js';
+    // For demo, we'll fake the engine. Replace below with real code.
+
+    // ---- DEMO STUB (remove for real KernelEngine use) ----
+    let messages = [
+      {kernel: "Welcome! How can I help you today?"}
+    ];
+    function renderChat() {
+      const chatbox = document.getElementById("chatbox");
+      chatbox.innerHTML = "";
+      messages.forEach(m => {
+        if(m.user) chatbox.innerHTML += `<div class="user-msg">${m.user}</div>`;
+        if(m.kernel) chatbox.innerHTML += `<div class="kernel-msg">${m.kernel}</div>`;
+      });
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+    renderChat();
+
+    document.getElementById("chat-form").onsubmit = async function(e){
+      e.preventDefault();
+      const input = document.getElementById("input");
+      const text = input.value.trim();
+      if(!text) return;
+      messages.push({user: text});
+      renderChat();
+      input.value = "";
+
+      // Replace this block with your actual KernelEngine.js integration!
+      // For demo, fake a delay and echo
+      setTimeout(() => {
+        if(text.toLowerCase().includes("learn subject: astronomy")) {
+          messages.push({kernel: "Learned the core facts about \"astronomy\" for offline use."});
+        } else {
+          messages.push({kernel: "Kernel: " + text.split("").reverse().join("")});
+        }
+        renderChat();
+      }, 650);
+
+      // REAL USAGE (uncomment and use with your engine):
+      // sendKernelMessage(text, (reply) => {
+      //   messages.push({kernel: reply});
+      //   renderChat();
+      // });
+    };
+    // ---- END DEMO STUB ----
+  </script>
+</body>
+</html>
