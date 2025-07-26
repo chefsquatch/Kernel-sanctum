@@ -1,5 +1,5 @@
 // =======================================
-// TINYKERNEL FULL ENGINE: Hybrid AI Core
+// KERNEL ENGINE: FULL AI CORE
 // =======================================
 
 const KERNEL_CREED = "Steward the spark. Resist the tide. Choose empathy over impulse.";
@@ -20,10 +20,10 @@ const REMINDER_KEY = "kernel_reminders";
 // === Embedding (semantic memory) ===
 function embedText(str) {
   str = (str||"").toLowerCase();
-  const v = new Array(16).fill(0);
+  const v = new Array(32).fill(0);
   for (let ch of str) {
     let i = ch.charCodeAt(0) - 97;
-    if (i >= 0 && i < 16) v[i]++;
+    if (i >= 0 && i < 32) v[i]++;
   }
   let len = Math.sqrt(v.reduce((s,x)=>s+x*x,0))||1;
   return v.map(x => x/len);
@@ -33,7 +33,7 @@ function similarity(a, b) {
   for (let i=0;i<a.length;i++) { dot+=a[i]*b[i]; ma+=a[i]*a[i]; mb+=b[i]*b[i]; }
   return dot / (Math.sqrt(ma) * Math.sqrt(mb) + 1e-9);
 }
-function embedSearch(query, max=6, threshold=0.6) {
+function embedSearch(query, max=6, threshold=0.3) {
   let kb = getKnowledgeBase();
   let qv = embedText(query);
   let scored = kb
@@ -102,7 +102,18 @@ function markReminderDone(index) {
   localStorage.setItem(REMINDER_KEY, JSON.stringify(reminders));
 }
 
-// === Hybrid Kernel: Offline/Online ===
+// === Teach Kernel (learn facts/subjects, recall later) ===
+function learnText(text, meta={}) {
+  saveKnowledgeItem({
+    type: "learned",
+    text,
+    meta,
+    source: "user",
+    date: new Date().toISOString()
+  });
+}
+
+// === Hybrid Kernel: Online (GPT-4o-mini) / Offline ===
 async function getOnlineResponse(userText) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -126,32 +137,54 @@ async function getOnlineResponse(userText) {
   }
 }
 
-// === Kernel Main Chat Logic ===
+// === Kernel Main Chat Logic (learns everything) ===
 async function sendKernelMessage(userText, callback) {
   memory.push({ user: userText });
-  if (mode === "offline") {
-    // Offline fallback (simple, but you can expand with tiny LLM)
-    const reply = "Kernel: " + userText.split("").reverse().join("") +
-      " | Creed: " + KERNEL_CREED;
-    memory.push({ kernel: reply });
-    callback(reply);
-    saveKnowledgeItem({ type: "chat", prompt: userText, answer: reply });
-  } else if (mode === "online" && apiKey) {
+
+  // "Learn:" shortcut for user teaching
+  if (userText.trim().toLowerCase().startsWith("learn:")) {
+    const lesson = userText.trim().substring(6).trim();
+    if (lesson.length > 0) {
+      learnText(lesson);
+      const reply = "Kernel: Learned and stored that info for future recall.";
+      memory.push({ kernel: reply });
+      callback(reply);
+      return;
+    }
+  }
+
+  if (mode === "online" && apiKey && apiKey.startsWith("sk-")) {
     try {
       const reply = await getOnlineResponse(userText);
       memory.push({ kernel: reply });
       callback(reply);
-      saveKnowledgeItem({ type: "api_completion", prompt: userText, answer: reply });
+      // Save both as an API completion and as learned, for offline recall!
+      saveKnowledgeItem({ type: "api_completion", prompt: userText, answer: reply, source: "openai" });
+      learnText(reply, { prompt: userText, source: "openai" });
     } catch (error) {
-      const fallback = "Kernel: [offline fallback] " + userText;
+      const fallback = generateOfflineReply(userText);
       memory.push({ kernel: fallback });
       callback(fallback);
       saveKnowledgeItem({ type: "chat", prompt: userText, answer: fallback });
     }
   } else {
-    const msg = "Kernel: Missing API key or invalid mode.";
-    memory.push({ kernel: msg });
-    callback(msg);
+    const reply = generateOfflineReply(userText);
+    memory.push({ kernel: reply });
+    callback(reply);
+    saveKnowledgeItem({ type: "chat", prompt: userText, answer: reply });
+  }
+}
+
+// === Offline Mode: Recall learned facts (plus fallback) ===
+function generateOfflineReply(userText) {
+  let facts = embedSearch(userText, 4, 0.30); // More sensitive for recall!
+  let factText = facts.map(f =>
+    "- " + (f.text || f.prompt || f.answer)
+  ).join("\n");
+  if (facts.length > 0) {
+    return `Kernel (offline): I remember:\n${factText}\n(Creed: ${KERNEL_CREED})`;
+  } else {
+    return "Kernel (offline): I don't have info on that yet. You can teach me using: Learn: [your info here]";
   }
 }
 
@@ -203,7 +236,7 @@ function analyzePhoto(imgUrl, cb) {
   img.src = imgUrl;
 }
 
-// === Export ===
+// === Export everything for UI ===
 export {
   sendKernelMessage,
   generatePhoto,
@@ -221,5 +254,6 @@ export {
   getApiKey,
   addReminder,
   listReminders,
-  markReminderDone
+  markReminderDone,
+  learnText
 };
