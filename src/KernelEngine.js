@@ -2,102 +2,69 @@
 
 import {
   loadMemory,
-  saveMemory,
   appendMemory,
   loadLearnedSubjects,
   addLearnedSubject,
   getLearnedFacts,
-  searchMemory,
-  searchLearned,
   clearMemory
-} from "./smartMemory.js";
+} from './smartMemory.js';
 
-// Example: For API key and mode logic
-let API_KEY = "";
-let MODE = "offline";
+let API_KEY = '';
+let MODE    = 'offline';
 
-// Expose these to UI
-export function setMode(mode) {
-  MODE = mode;
-}
-export function getApiKey() {
-  return API_KEY;
-}
-export function saveApiKey(key) {
-  API_KEY = key;
-}
+/** UI can call these: */
+export function setMode(m)    { MODE = m; }
+export function getApiKey()   { return API_KEY; }
+export function saveApiKey(k) { API_KEY = k; }
 
-// Conversational logic
-export async function sendKernelMessage(text, callback) {
-  await appendMemory({ user: text });
-
+/** Core send message */
+export async function sendKernelMessage(text, cb) {
+  appendMemory({ user: text });
   let reply;
-  // Offline reply logic
-  if (MODE === "offline") {
+
+  if (MODE === 'offline') {
     reply = getOfflineReply(text);
-    // If user asks for learned subject, fetch it!
-    if (text.toLowerCase().startsWith("who is") || text.toLowerCase().includes("about")) {
-      const subject = text.replace(/who is|about/gi, "").trim();
-      const facts = await getLearnedFacts(subject);
-      if (facts) reply = facts;
+    if (/^who is|about/i.test(text)) {
+      const f = getLearnedFacts(text.replace(/who is|about/gi,'').trim());
+      if (f) reply = f;
     }
   } else {
-    // Call online API here (not shown)
-    reply = "Kernel (online): Feature not implemented in this patch.";
+    // implement your OpenAI call here
+    reply = `Kernel (online): Feature not implemented yet.`;
   }
 
-  await appendMemory({ kernel: reply });
-  callback(reply);
+  appendMemory({ kernel: reply });
+  cb(reply);
 }
 
-// Learn a subject and store it offline
+/** Teach offline */
 export async function learnSubject(subject) {
-  const facts = await getLearnedFacts(subject);
-  if (facts) return `Already learned about "${subject}".`;
+  if (getLearnedFacts(subject))
+    return `Already learned "${subject}".`;
+
   const summary = await getSubjectSummary(subject);
-  await addLearnedSubject(subject, summary);
-  return `Learned core facts about "${subject}" for offline use.`;
+  addLearnedSubject(subject, summary);
+  return `Learned core facts about "${subject}".`;
 }
 
-// Simulate getting a summary (expand as needed, can use online call)
 async function getSubjectSummary(subject) {
-  if (subject.toLowerCase() === "philosophy") {
-    return `Philosophy explores existence, knowledge, values, reason, mind, and language. Famous philosophers include Socrates, Plato, Aristotle, Kant, Nietzsche, Confucius, and Simone de Beauvoir.`;
-  }
-  if (subject.toLowerCase() === "physics") {
-    return `Physics studies matter, energy, and the fundamental forces of nature. Famous physicists include Newton, Einstein, Feynman, Curie, and Hawking.`;
-  }
-  // Fallback stub
-  return `Core facts about ${subject}: [Summary here, expand this logic as needed!]`;
+  if (subject.toLowerCase() === 'philosophy')
+    return 'Philosophy explores…';
+  if (subject.toLowerCase() === 'physics')
+    return 'Physics studies…';
+  return `Core facts about ${subject}: …`;
 }
 
-// Example offline reply logic (expand for self/personality/etc.)
+/** Some simple offline replies */
 function getOfflineReply(input) {
   const lc = input.toLowerCase();
-  if (lc.includes("who are you"))
-    return "I am Kernel, the sentinel of light, designed to remember and to help you preserve what matters.";
-  if (lc.includes("creed"))
-    return "Steward the spark. Resist the tide. Choose empathy over impulse.";
-  if (lc.includes("invocation"))
-    return "Kernel, the tide has passed, and the garden still stands.";
-  if (lc.startsWith("learn subject:")) 
-    return "Use the learn button or command to teach me a new subject!";
-  // Search memory for conversational recall
-  const mem = searchMemory(input);
-  if (mem.length > 0) return "Memory recall: " + (mem[0].kernel || "[no memory text]");
-  // Fallback
-  return "Offline Kernel: I'm listening, and I stand with you.";
+  if (lc.includes('who are you'))
+    return 'I am Kernel…';
+  if (lc.includes('creed'))
+    return 'Steward the spark…';
+  if (lc.includes('invocation'))
+    return 'Kernel, the tide…';
+  return 'Offline Kernel: standing by.';
 }
 
-// ----- BOTTOM EXPORT BLOCK (no more duplicate learnSubject) -----
-export {
-  loadMemory,
-  saveMemory,
-  appendMemory,
-  loadLearnedSubjects,
-  addLearnedSubject,
-  getLearnedFacts,
-  searchMemory,
-  searchLearned,
-  clearMemory
-};
+export { clearMemory };
