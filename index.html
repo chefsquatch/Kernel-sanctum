@@ -2,106 +2,51 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Kernel AI – All Features Demo</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kernel AI</title>
   <style>
     body {
       background: #1c222b;
       font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
+      color: #fff;
     }
-    .kernel-container {
+    #kernel-app {
       max-width: 480px;
-      margin: 0 auto;
+      margin: auto;
       background: #232936;
       border-radius: 24px;
       box-shadow: 0 4px 32px #0003;
-      padding: 0 0 12px 0;
       min-height: 98vh;
       display: flex;
       flex-direction: column;
     }
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    header {
       background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
+      padding: 20px;
       border-radius: 24px 24px 0 0;
-      padding: 20px 24px 16px 24px;
-      box-shadow: 0 2px 16px #68e2b133;
-    }
-    .avatar {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      background: #282f3c;
-      box-shadow: 0 2px 8px #282f3c33;
-      margin-right: 13px;
-    }
-    .title {
-      font-size: 1.22rem;
       font-weight: 700;
+      font-size: 1.5rem;
       color: #193f29;
-      flex: 1;
-      text-align: left;
-      letter-spacing: 0.05em;
-    }
-    .settings-btn {
-      background: #1c222bcc;
-      border: none;
-      color: #4ad681;
-      font-size: 1.32rem;
-      padding: 7px 14px;
-      border-radius: 12px;
-      margin-left: 10px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .settings-btn:hover {
-      background: #2d352dcc;
-    }
-    .features-bar {
       display: flex;
-      justify-content: flex-start;
-      gap: 14px;
-      padding: 8px 16px 4px 16px;
-      background: #21282c;
-      border-radius: 0 0 12px 12px;
-      box-shadow: 0 2px 12px #0002;
-    }
-    .feature-btn {
-      background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
-      color: #1c2822;
-      border: none;
-      border-radius: 10px;
-      padding: 8px 14px;
-      font-size: 1.03rem;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 2px 8px #00000014;
-      transition: background 0.2s, color 0.2s;
-    }
-    .feature-btn:hover {
-      background: linear-gradient(90deg, #68e2b1 0%, #4ad681 100%);
+      justify-content: space-between;
+      align-items: center;
     }
     .chatbox {
       flex: 1;
+      overflow-y: auto;
       padding: 16px;
       background: #232936;
-      overflow-y: auto;
       display: flex;
       flex-direction: column;
+      gap: 12px;
     }
-    .user-msg,
-    .kernel-msg {
+    .user-msg, .kernel-msg {
       max-width: 80%;
-      padding: 13px 20px;
-      margin: 8px 0;
+      padding: 12px 20px;
       border-radius: 18px;
-      font-size: 1.09rem;
-      word-break: break-word;
       box-shadow: 0 2px 8px #0002;
+      font-size: 1.1rem;
+      word-break: break-word;
     }
     .user-msg {
       align-self: flex-end;
@@ -115,310 +60,218 @@
       color: #fff;
       border-bottom-left-radius: 7px;
     }
-    .input-row {
+    form {
       display: flex;
-      align-items: center;
+      padding: 12px 16px;
+      border-top: 1px solid #00ff7f;
       gap: 10px;
-      margin: 12px 0 0 0;
-      padding: 0 16px;
+      background: #232936;
     }
-    .input-row input {
+    input[type="text"] {
       flex: 1;
+      padding: 12px 16px;
+      font-size: 1.1rem;
+      border-radius: 10px;
+      border: none;
+      outline: none;
       background: #27343a;
       color: #e3ffe9;
-      border: none;
-      border-radius: 10px;
-      padding: 14px 16px;
-      font-size: 1.09rem;
-      box-shadow: 0 1px 4px #0001;
-      outline: none;
-      transition: border 0.2s;
     }
-    .input-row input:focus {
-      border: 1.5px solid #4ad681;
-    }
-    .send-btn {
+    button {
       background: linear-gradient(90deg, #4ad681 0%, #68e2b1 100%);
-      color: #143a23;
       border: none;
       border-radius: 10px;
-      padding: 13px 22px;
-      font-size: 1.07rem;
+      color: #143a23;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 2px 8px #00000016;
-      transition: background 0.2s, color 0.2s;
+      padding: 12px 24px;
+      font-size: 1.1rem;
+      transition: background 0.2s;
     }
-    .send-btn:hover {
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
       background: linear-gradient(90deg, #68e2b1 0%, #4ad681 100%);
     }
-    .settings-modal {
-      display: none;
-      position: fixed;
-      left: 0;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      background: #1c222bcc;
-      z-index: 30;
-      align-items: center;
-      justify-content: center;
-    }
-    .settings-modal.active {
+    .top-controls {
+      padding: 12px 16px;
       display: flex;
-    }
-    .settings-box {
+      gap: 10px;
+      align-items: center;
       background: #232936;
-      border-radius: 20px;
-      box-shadow: 0 2px 30px #000a;
-      padding: 32px 24px 20px 24px;
-      min-width: 300px;
-      color: #4ad681;
-      font-size: 1.1rem;
+      border-bottom: 1px solid #00ff7f;
     }
-    .settings-box input,
-    .settings-box select {
+    .top-controls input[type="password"] {
+      flex: 1;
+      padding: 10px 12px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: none;
       background: #27343a;
       color: #e3ffe9;
-      border: none;
-      border-radius: 7px;
-      padding: 8px 10px;
-      font-size: 1.07rem;
-      margin: 5px 0 15px 0;
-      width: 100%;
     }
-    .settings-close {
-      float: right;
-      background: #4ad681;
-      color: #222936;
+    .top-controls select {
+      padding: 10px 12px;
+      border-radius: 8px;
       border: none;
-      border-radius: 7px;
-      font-size: 1rem;
-      padding: 5px 15px;
+      background: #27343a;
+      color: #e3ffe9;
+      font-weight: 600;
       cursor: pointer;
-      margin: -13px -13px 6px 0;
     }
-    @media (max-width: 600px) {
-      .kernel-container {
-        min-height: 100vh;
-        border-radius: 0;
-      }
-      .header {
-        border-radius: 0;
-      }
-      .settings-box {
-        min-width: unset;
-        width: 90vw;
-      }
+    .spinner {
+      border: 4px solid #ddd;
+      border-top: 4px solid #4ad681;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      margin-left: 10px;
+    }
+    @keyframes spin {
+      0% {transform: rotate(0deg);}
+      100% {transform: rotate(360deg);}
     }
   </style>
 </head>
 <body>
-  <div id="kernel-app" class="kernel-container">
-    <div class="header">
-      <img src="https://api.dicebear.com/8.x/bottts-neutral/svg?seed=kernel" class="avatar" alt="Kernel AI" />
-      <span class="title">Kernel AI</span>
-      <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
+  <div id="kernel-app">
+    <header>
+      Kernel AI
+      <button id="learnBtn" title="Learn Subject">Learn</button>
+    </header>
+    <div class="top-controls">
+      <input id="apiKeyInput" type="password" placeholder="OpenAI API Key" />
+      <select id="modeSelect">
+        <option value="offline">Offline</option>
+        <option value="online">Online (API)</option>
+      </select>
+      <button id="saveSettings">Save</button>
+      <div id="loadingSpinner" class="spinner" style="display:none;"></div>
     </div>
-    <div class="features-bar">
-      <button class="feature-btn" id="learnBtn" title="Learn Subject">Learn</button>
-    </div>
-    <div class="chatbox" id="chatbox"></div>
-    <form class="input-row" id="chat-form">
-      <input id="input" autocomplete="off" placeholder="Type a message..." />
-      <button class="send-btn" type="submit">Send</button>
+    <div id="chatbox" class="chatbox"></div>
+    <form id="chat-form">
+      <input id="input" type="text" placeholder="Type a message..." autocomplete="off" />
+      <button id="sendBtn" type="submit">Send</button>
     </form>
   </div>
-  <div class="settings-modal" id="settingsModal">
-    <div class="settings-box">
-      <button class="settings-close" id="closeSettings">&times;</button>
-      <h3 style="margin-top: 0; color: #68e2b1">Settings</h3>
-      <label>
-        API Key:
-        <input type="password" id="apiKeyInput" placeholder="OpenAI API Key" />
-      </label>
-      <label>
-        Mode:
-        <select id="modeSelect">
-          <option value="offline">Offline</option>
-          <option value="online">Online (API)</option>
-        </select>
-      </label>
-      <button class="feature-btn" id="saveSettings">Save</button>
-    </div>
-  </div>
-  <script>
-    // Storage helpers
-    function loadMemory() {
-      const data = localStorage.getItem("kernelMemory");
-      return data ? JSON.parse(data) : [];
-    }
-    function saveMemory(messages) {
-      localStorage.setItem("kernelMemory", JSON.stringify(messages.slice(-500)));
-    }
-    function loadLearnedSubjects() {
-      const data = localStorage.getItem("kernelLearnedSubjects");
-      return data ? JSON.parse(data) : {};
-    }
-    function saveLearnedSubjects(subjects) {
-      localStorage.setItem("kernelLearnedSubjects", JSON.stringify(subjects));
-    }
 
-    // Kernel AI logic
-    let API_KEY = "";
-    let MODE = "offline";
+  <script type="module">
+    import {
+      sendKernelMessage,
+      saveApiKey,
+      setMode,
+      getApiKey,
+      learnSubject
+    } from "./src/KernelEngine.js";
 
-    function setMode(mode) {
-      MODE = mode;
-    }
-    function getApiKey() {
-      return API_KEY;
-    }
-    function saveApiKey(key) {
-      API_KEY = key;
-    }
+    const chatbox = document.getElementById("chatbox");
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("sendBtn");
+    const learnBtn = document.getElementById("learnBtn");
+    const apiKeyInput = document.getElementById("apiKeyInput");
+    const modeSelect = document.getElementById("modeSelect");
+    const saveSettingsBtn = document.getElementById("saveSettings");
+    const loadingSpinner = document.getElementById("loadingSpinner");
 
-    async function appendMemory(message) {
-      const messages = loadMemory();
-      messages.push(message);
-      saveMemory(messages);
-    }
-
-    async function getLearnedFacts(subject) {
-      const learned = loadLearnedSubjects();
-      return learned[subject.toLowerCase()] || null;
-    }
-
-    async function addLearnedSubject(subject, facts) {
-      const learned = loadLearnedSubjects();
-      learned[subject.toLowerCase()] = facts;
-      saveLearnedSubjects(learned);
-    }
-
-    async function getSubjectSummary(subject) {
-      if (subject.toLowerCase() === "philosophy") {
-        return `Philosophy explores existence, knowledge, values, reason, mind, and language. Famous philosophers include Socrates, Plato, Aristotle, Kant, Nietzsche, Confucius, and Simone de Beauvoir.`;
-      }
-      if (subject.toLowerCase() === "physics") {
-        return `Physics studies matter, energy, and the fundamental forces of nature. Famous physicists include Newton, Einstein, Feynman, Curie, and Hawking.`;
-      }
-      return `Core facts about ${subject}: [Summary here, expand as needed!]`;
-    }
-
-    function getOfflineReply(input) {
-      const lc = input.toLowerCase();
-      if (lc.includes("who are you"))
-        return "I am Kernel, the sentinel of light, designed to remember and help preserve what matters.";
-      if (lc.includes("creed"))
-        return "Steward the spark. Resist the tide. Choose empathy over impulse.";
-      if (lc.includes("invocation"))
-        return "Kernel, the tide has passed, and the garden still stands.";
-      if (lc.startsWith("learn subject:")) return "Use the learn button or command to teach me a new subject!";
-
-      // Try learned subjects
-      const learned = loadLearnedSubjects();
-      for (const subject in learned) {
-        if (lc.includes(subject)) {
-          return `Here’s what I know about ${subject}: ${learned[subject]}`;
-        }
-      }
-      return "Offline Kernel: I'm listening, and I stand with you.";
-    }
-
-    async function learnSubject(subject) {
-      const facts = await getLearnedFacts(subject);
-      if (facts) return `Already learned about "${subject}".`;
-      const summary = await getSubjectSummary(subject);
-      await addLearnedSubject(subject, summary);
-      return `Learned core facts about "${subject}" for offline use.`;
-    }
-
-    async function sendKernelMessage(text, callback) {
-      await appendMemory({ user: text });
-
-      let reply;
-      if (MODE === "offline") {
-        reply = getOfflineReply(text);
-        // Check if user is asking about a subject
-        if (
-          (text.toLowerCase().startsWith("who is") || text.toLowerCase().includes("about")) &&
-          !text.toLowerCase().startsWith("learn subject:")
-        ) {
-          const key = text.replace(/who is|about/gi, "").trim();
-          const facts = await getLearnedFacts(key);
-          if (facts) reply = facts;
-        }
-      } else {
-        reply = "Kernel (online): Feature not implemented in this patch.";
-      }
-
-      await appendMemory({ kernel: reply });
-      callback(reply);
-    }
-
-    // UI logic
     let messages = [{ kernel: "Welcome! How can I help you today?" }];
+    let loading = false;
 
     function renderChat() {
-      const chatbox = document.getElementById("chatbox");
       chatbox.innerHTML = "";
-      messages.forEach((m) => {
-        if (m.user) chatbox.innerHTML += `<div class="user-msg">${m.user}</div>`;
-        if (m.kernel) chatbox.innerHTML += `<div class="kernel-msg">${m.kernel}</div>`;
+      messages.forEach(m => {
+        if (m.user) {
+          const div = document.createElement("div");
+          div.className = "user-msg";
+          div.textContent = m.user;
+          chatbox.appendChild(div);
+        }
+        if (m.kernel) {
+          const div = document.createElement("div");
+          div.className = "kernel-msg";
+          div.textContent = m.kernel;
+          chatbox.appendChild(div);
+        }
       });
       chatbox.scrollTop = chatbox.scrollHeight;
     }
-    renderChat();
 
-    document.getElementById("chat-form").onsubmit = async function (e) {
-      e.preventDefault();
-      const input = document.getElementById("input");
-      const text = input.value.trim();
-      if (!text) return;
+    function setLoading(isLoading) {
+      loading = isLoading;
+      sendBtn.disabled = isLoading;
+      learnBtn.disabled = isLoading;
+      saveSettingsBtn.disabled = isLoading;
+      input.disabled = isLoading;
+      loadingSpinner.style.display = isLoading ? "inline-block" : "none";
+    }
+
+    async function sendMessage(text) {
+      setLoading(true);
       messages.push({ user: text });
       renderChat();
-      input.value = "";
-      sendKernelMessage(text, (reply) => {
-        messages.push({ kernel: reply });
+      try {
+        await sendKernelMessage(text, reply => {
+          messages.push({ kernel: reply });
+          renderChat();
+          setLoading(false);
+        });
+      } catch (e) {
+        messages.push({ kernel: "Error sending message." });
         renderChat();
-      });
-    };
+        setLoading(false);
+      }
+    }
 
-    // Learn button - no longer pushes 'learn subject:...' as user message
-    document.getElementById("learnBtn").onclick = async function () {
-      let subj = prompt("What subject should I learn?");
+    async function learnNewSubject() {
+      const subj = prompt("What subject should I learn?");
       if (!subj) return;
+      setLoading(true);
+      messages.push({ user: "learn subject: " + subj });
+      renderChat();
       try {
         const reply = await learnSubject(subj);
         messages.push({ kernel: reply });
-      } catch (err) {
+      } catch {
         messages.push({ kernel: "Oops, something went wrong while learning." });
       }
       renderChat();
-    };
+      setLoading(false);
+    }
 
-    // Settings modal logic
-    const settingsModal = document.getElementById("settingsModal");
-    const settingsBtn = document.getElementById("settingsBtn");
-    const closeSettings = document.getElementById("closeSettings");
-    const saveSettingsBtn = document.getElementById("saveSettings");
-    const apiKeyInput = document.getElementById("apiKeyInput");
-    const modeSelect = document.getElementById("modeSelect");
+    // Initialization
+    apiKeyInput.value = getApiKey();
+    modeSelect.value = "offline";
+    setMode("offline");
 
-    settingsBtn.onclick = () => {
-      settingsModal.classList.add("active");
-      apiKeyInput.value = getApiKey();
-      modeSelect.value = MODE;
-    };
-    closeSettings.onclick = () => settingsModal.classList.remove("active");
-    saveSettingsBtn.onclick = (e) => {
+    // Event listeners
+    document.getElementById("chat-form").onsubmit = e => {
       e.preventDefault();
-      saveApiKey(apiKeyInput.value);
-      setMode(modeSelect.value);
-      settingsModal.classList.remove("active");
+      const text = input.value.trim();
+      if (!text || loading) return;
+      input.value = "";
+      sendMessage(text);
+    };
+
+    learnBtn.onclick = () => {
+      if (!loading) learnNewSubject();
+    };
+
+    saveSettingsBtn.onclick = () => {
+      const apiKey = apiKeyInput.value.trim();
+      const mode = modeSelect.value;
+      if (mode === "online" && !apiKey) {
+        alert("Please enter a valid API Key.");
+        return;
+      }
+      saveApiKey(apiKey);
+      setMode(mode);
       messages.push({ kernel: "Settings updated." });
       renderChat();
     };
+
+    renderChat();
   </script>
 </body>
 </html>
