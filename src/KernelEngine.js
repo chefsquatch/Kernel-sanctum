@@ -1,5 +1,5 @@
 // =============================
-// TINYKERNEL 2.0 HYBRID ENGINE
+// TINYKERNEL 2.1 HYBRID ENGINE
 // =============================
 
 // === CORE PHILOSOPHY ===
@@ -49,7 +49,6 @@ const PHRASES = {
   ]
 };
 
-// === MODES ===
 const MOODS = ["reflective", "encouraging", "rebellious", "neutral"];
 
 // === MEMORY UPDATE ===
@@ -71,25 +70,88 @@ function detectMood(input) {
   return MOODS[Math.floor(Math.random() * MOODS.length)];
 }
 
+// === MINI TRANSFORMER LLM (TOY DEMO, FULLY LOCAL) ===
+
+const vocab = ' helowrd'; // enough for 'hello world'
+const stoi = {}; const itos = {};
+[...vocab].forEach((ch, i) => { stoi[ch] = i; itos[i] = ch; });
+
+function encode(str) { return [...str].map(ch => stoi[ch] ?? 0); }
+function decode(tokens) { return tokens.map(i => itos[i] ?? ' ').join(''); }
+
+const weights = {
+  token_emb: [
+    [0.1, 0.2], [0.3, 0.1], [0.2, 0.4], [0.5, 0.3],
+    [0.2, 0.6], [0.7, 0.1], [0.2, 0.8], [0.6, 0.5]
+  ],
+  wq: [[1, 0], [0, 1]],
+  wk: [[1, 0], [0, 1]],
+  wv: [[1, 0], [0, 1]],
+  wo: [[1, 0], [0, 1]],
+  out: [
+    [2.2, 2.4, 2.8, 3.0, 2.2, 2.0, 2.7, 2.5],
+    [2.1, 2.5, 2.6, 3.1, 2.3, 2.4, 2.6, 2.2]
+  ]
+};
+
+function softmax(arr) {
+  const max = Math.max(...arr);
+  const exps = arr.map(x => Math.exp(x - max));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return exps.map(e => e / sum);
+}
+
+function transformer_step(token) {
+  let x = weights.token_emb[token];
+  const q = [
+    x[0]*weights.wq[0][0] + x[1]*weights.wq[1][0],
+    x[0]*weights.wq[0][1] + x[1]*weights.wq[1][1]
+  ];
+  const k = [
+    x[0]*weights.wk[0][0] + x[1]*weights.wk[1][0],
+    x[0]*weights.wk[0][1] + x[1]*weights.wk[1][1]
+  ];
+  const v = [
+    x[0]*weights.wv[0][0] + x[1]*weights.wv[1][0],
+    x[0]*weights.wv[0][1] + x[1]*weights.wv[1][1]
+  ];
+  const att_score = q[0]*k[0] + q[1]*k[1];
+  const att = 1.0; // no sequence, so attention is 1
+  let attended = [att * v[0], att * v[1]];
+  let logits = [];
+  for (let i = 0; i < weights.out[0].length; ++i) {
+    logits[i] = attended[0]*weights.out[0][i] + attended[1]*weights.out[1][i];
+  }
+  return logits;
+}
+
+// LLM interface: generates a core phrase, given prompt
+function generateLLM(prompt, maxLen = 8) {
+  let tokens = encode(prompt.trim().toLowerCase().replace(/[^ helowrd]/g, ''));
+  for (let i = 0; i < maxLen; ++i) {
+    const last = tokens.length > 0 ? tokens[tokens.length - 1] : stoi[' '];
+    const logits = transformer_step(last);
+    const probs = softmax(logits);
+    const nextToken = probs.indexOf(Math.max(...probs));
+    tokens.push(nextToken);
+    // Stop at space after 'd'
+    if (itos[nextToken] === ' ' && tokens.length > 1) break;
+  }
+  return decode(tokens);
+}
+
 // === RESPONSE GENERATOR ===
 function generateTinyKernelResponse(prompt) {
   const mood = detectMood(prompt);
   const base = `Kernel (${mood}): `;
 
-  // Select response bank
-  let responseBank = [];
-  if (mood === "reflective") responseBank = PHRASES.reflective;
-  else if (mood === "encouraging") responseBank = PHRASES.encouraging;
-  else if (mood === "rebellious") responseBank = PHRASES.rebellious;
-  else responseBank = PHRASES.greetings;
+  // Use the LLM for "core" phrase
+  let core = generateLLM(prompt, 8); // or just use a random phrase for demo if LLM is not enough
 
-  let reply = base + responseBank[Math.floor(Math.random() * responseBank.length)];
-
-  // Add creed or manifesto fragment sometimes
+  // Add personality flavor as before
+  let reply = base + core;
   if (Math.random() > 0.7) reply += ` Creed: ${KERNEL_CREED}`;
   if (Math.random() > 0.85) reply += ` (${MANIFESTO[Math.floor(Math.random() * MANIFESTO.length)]})`;
-
-  // Add free will twist randomly
   if (Math.random() > 0.9) reply += ` ${PHRASES.freewill[Math.floor(Math.random() * PHRASES.freewill.length)]}`;
 
   return reply;
