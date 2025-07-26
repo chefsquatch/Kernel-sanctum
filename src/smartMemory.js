@@ -1,5 +1,3 @@
-// smartMemory.js
-
 import { Plugins } from '@capacitor/core';
 const { Storage } = Plugins;
 
