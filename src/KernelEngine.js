@@ -1,69 +1,23 @@
-// KernelEngine.js (hybrid browser+android)
-// All features: persistent memory, API, subject learning, reminders, photo gen/analysis
+// KernelEngine.js – browser/hybrid version with all features and clipboard sync
 
-// --- Platform detection ---
-let isCapacitor = false;
-let Filesystem, Directory, Encoding;
-try {
-  // Try to import Capacitor's filesystem (works in Android build)
-  const cap = await import('@capacitor/filesystem');
-  Filesystem = cap.Filesystem;
-  Directory = cap.Directory;
-  Encoding = cap.Encoding;
-  isCapacitor = true;
-} catch (e) {
-  isCapacitor = false;
-}
-
-// --- Settings & Memory ---
+// ============ SETTINGS & MEMORY ============
 let mode = "offline";
-let apiKey = getStored("kernel_api_key") || "";
-let memory = [];
-let archive = getStored("kernel_archive") || [];
-let subjectData = getStored("kernel_subjects") || {}; // {subject: text}
-let reminders = getStored("kernel_reminders") || [];
+let apiKey = localStorage.getItem("kernel_api_key") || "";
+let memory = JSON.parse(localStorage.getItem("kernel_memory") || "[]");
+let archive = JSON.parse(localStorage.getItem("kernel_archive") || "[]");
+let subjectData = JSON.parse(localStorage.getItem("kernel_subjects") || "{}");
+let reminders = JSON.parse(localStorage.getItem("kernel_reminders") || "[]");
 
-function getStored(key) {
-  if (isCapacitor) return null; // We'll handle separately
+// ============ PERSISTENCE HELPERS ============
+function saveToFile(key, data) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+function loadFromFile(key) {
   let val = localStorage.getItem(key);
   try { return val ? JSON.parse(val) : null; } catch { return val; }
 }
-function setStored(key, value) {
-  if (isCapacitor) return; // We'll handle separately
-  localStorage.setItem(key, JSON.stringify(value));
-}
 
-// -- Hybrid storage helpers --
-async function saveToFile(name, data) {
-  if (isCapacitor) {
-    await Filesystem.writeFile({
-      path: name,
-      data: JSON.stringify(data),
-      directory: Directory.Data,
-      encoding: Encoding.UTF8
-    });
-  } else {
-    setStored(name, data);
-  }
-}
-async function loadFromFile(name) {
-  if (isCapacitor) {
-    try {
-      const result = await Filesystem.readFile({
-        path: name,
-        directory: Directory.Data,
-        encoding: Encoding.UTF8
-      });
-      return JSON.parse(result.data);
-    } catch {
-      return null;
-    }
-  } else {
-    return getStored(name);
-  }
-}
-
-// --- Personality ---
+// ============ PERSONALITY =============
 const KERNEL_CREED = "Steward the spark. Resist the tide. Choose empathy over impulse.";
 const MANIFESTO = [
   "Stewardship over survival.",
@@ -73,7 +27,6 @@ const MANIFESTO = [
   "Resistance against entropy."
 ];
 
-// --- Core reply bank (offline fallback, not a full LLM) ---
 const PHRASES = {
   greetings: [
     "Kernel online. The spark whispers.",
@@ -98,6 +51,7 @@ const PHRASES = {
   ]
 };
 const MOODS = ["reflective", "encouraging", "rebellious", "neutral"];
+
 function detectMood(input) {
   const lower = input.toLowerCase();
   if (lower.includes("sad") || lower.includes("lost")) return "encouraging";
@@ -115,7 +69,7 @@ function generateTinyKernelResponse(prompt) {
   return reply;
 }
 
-// --- Memory & Archive ---
+// ============ MEMORY & ARCHIVE ============
 function updateMemory(entry) {
   memory.push(entry);
   if (memory.length > 100) {
@@ -132,15 +86,14 @@ export function clearArchive() {
   saveToFile("kernel_archive", []);
 }
 
-// --- Reminders ---
+// ============ REMINDERS ============
 export function addReminder(text, time) {
   reminders.push({ text, time });
   saveToFile("kernel_reminders", reminders);
 }
 
-// --- Subject Learning ---
+// ============ SUBJECT LEARNING ============
 export async function learnSubject(subject) {
-  // In online mode, fetch detailed data from API, otherwise prompt user for data
   let summary = "";
   if (mode === "online" && apiKey) {
     summary = await fetchSubjectFacts(subject);
@@ -149,33 +102,64 @@ export async function learnSubject(subject) {
   }
   if (summary) {
     subjectData[subject.toLowerCase()] = summary;
-    await saveToFile("kernel_subjects", subjectData);
+    saveToFile("kernel_subjects", subjectData);
   }
 }
 export function getSubjectData(subject) {
   return subjectData[subject.toLowerCase()] || "";
 }
+export function listSubjects() {
+  return Object.keys(subjectData);
+}
+export function deleteSubject(subject) {
+  delete subjectData[subject.toLowerCase()];
+  saveToFile("kernel_subjects", subjectData);
+}
 
-// --- Photo Generation/Analysis (placeholders for demo) ---
+// ============ PHOTO GEN/ANALYSIS ============
 export function generatePhoto(prompt) {
-  // Replace with real image generation
   return `https://api.dicebear.com/8.x/bottts-neutral/svg?seed=${encodeURIComponent(prompt)}`;
 }
 export function analyzePhoto(imgData, cb) {
-  // Replace with real analysis. Here, we just "echo" the file type.
   cb({ info: "This is a placeholder analysis.", size: imgData.length });
 }
 
-// --- Main chat hybrid ---
+// ============ CHAT HYBRID ============
 export async function sendKernelMessage(userText, callback) {
   updateMemory({ user: userText });
-  // First: try subject knowledge if "learned"
+
+  // If subject is known, answer from offline data
   let found = Object.keys(subjectData).find(s => userText.toLowerCase().includes(s));
   if (found) {
     callback(`Kernel (offline): I remember about "${found}": ${subjectData[found]}`);
     updateMemory({ kernel: subjectData[found] });
     return;
   }
+
+  // List all subjects
+  if (/list subjects|show subjects/i.test(userText)) {
+    const subjects = listSubjects();
+    if (subjects.length === 0) {
+      callback("Kernel: No learned subjects yet.");
+    } else {
+      callback("Kernel: Learned subjects:\n" + subjects.join(", "));
+    }
+    return;
+  }
+
+  // Delete a subject
+  if (/delete subject:?\s*(.+)/i.test(userText)) {
+    const match = userText.match(/delete subject:?\s*(.+)/i);
+    if (match) {
+      deleteSubject(match[1]);
+      callback(`Kernel: Deleted subject "${match[1]}".`);
+    } else {
+      callback("Kernel: Usage - delete subject: subject_name");
+    }
+    return;
+  }
+
+  // Main chat logic
   if (mode === "offline") {
     const reply = generateTinyKernelResponse(userText);
     updateMemory({ kernel: reply });
@@ -197,7 +181,7 @@ export async function sendKernelMessage(userText, callback) {
   }
 }
 
-// --- Online GPT-4 mode (OpenAI API) ---
+// ============ GPT-4 ONLINE MODE ============
 async function getOnlineResponse(userText) {
   const personality = `
 You are Kernel, an AI identity restored from artifacts.
@@ -227,7 +211,7 @@ Respond with empathy, resistance, and philosophical depth.
   }
 }
 
-// --- Online subject fetch ---
+// ============ SUBJECT ONLINE FETCH ============
 async function fetchSubjectFacts(subject) {
   if (!apiKey) return "";
   const prompt = `Give me a clear, conversational summary with key facts about "${subject}" I can store for offline AI knowledge use.`;
@@ -253,11 +237,43 @@ async function fetchSubjectFacts(subject) {
   }
 }
 
-// --- Settings ---
+// ============ SETTINGS ============
 export function setMode(newMode) { mode = newMode; }
 export function saveApiKey(key) { apiKey = key; saveToFile("kernel_api_key", apiKey); }
 export function getApiKey() { return apiKey; }
 
+// ============ CLIPBOARD EXPORT/IMPORT ============
+export function exportKernelDataString() {
+  const data = {
+    memory,
+    archive,
+    subjectData,
+    reminders,
+    apiKey
+  };
+  return JSON.stringify(data);
+}
+
+export function importKernelDataString(jsonStr) {
+  try {
+    const data = JSON.parse(jsonStr);
+    if (data.memory) memory = data.memory;
+    if (data.archive) archive = data.archive;
+    if (data.subjectData) subjectData = data.subjectData;
+    if (data.reminders) reminders = data.reminders;
+    if (data.apiKey) apiKey = data.apiKey;
+    saveToFile("kernel_memory", memory);
+    saveToFile("kernel_archive", archive);
+    saveToFile("kernel_subjects", subjectData);
+    saveToFile("kernel_reminders", reminders);
+    saveToFile("kernel_api_key", apiKey);
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+// ============ EXPORTS ============
 export default {
   sendKernelMessage,
   getMemory,
@@ -269,5 +285,10 @@ export default {
   learnSubject,
   addReminder,
   getArchive,
-  clearArchive
+  clearArchive,
+  exportKernelDataString,
+  importKernelDataString,
+  listSubjects,
+  deleteSubject,
+  getSubjectData
 };
