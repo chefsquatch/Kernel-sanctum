@@ -88,7 +88,7 @@
       display: flex;
       flex-direction: column;
     }
-    .user-msg, .kernel-msg, .photo-msg {
+    .user-msg, .kernel-msg {
       max-width: 80%;
       padding: 13px 20px;
       margin: 8px 0;
@@ -108,13 +108,6 @@
       background: #2c3e34;
       color: #fff;
       border-bottom-left-radius: 7px;
-    }
-    .photo-msg img {
-      max-width: 150px;
-      max-height: 150px;
-      border-radius: 14px;
-      margin: 8px 0 0 0;
-      display: block;
     }
     .input-row {
       display: flex;
@@ -189,24 +182,6 @@
       cursor: pointer;
       margin: -13px -13px 6px 0;
     }
-    .settings-box .sync-btn {
-      background: #25312d;
-      color: #4ad681;
-      border: none;
-      border-radius: 10px;
-      padding: 8px 13px;
-      font-size: 1.05rem;
-      margin: 7px 0 0 0;
-      cursor: pointer;
-      display: block;
-      width: 100%;
-      text-align: left;
-      transition: background .2s, color .2s;
-    }
-    .settings-box .sync-btn:hover {
-      background: #25312d99;
-      color: #68e2b1;
-    }
     @media (max-width: 600px) {
       .kernel-container { min-height: 100vh; border-radius: 0; }
       .header { border-radius: 0; }
@@ -222,8 +197,6 @@
       <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
     </div>
     <div class="features-bar">
-      <button class="feature-btn" id="photoBtn" title="Generate Photo">Photo</button>
-      <button class="feature-btn" id="analyzeBtn" title="Analyze Photo">Analyze</button>
       <button class="feature-btn" id="reminderBtn" title="Remind Me">Remind</button>
       <button class="feature-btn" id="learnBtn" title="Learn Subject">Learn</button>
     </div>
@@ -248,12 +221,8 @@
         </select>
       </label>
       <button class="feature-btn" id="saveSettings">Save</button>
-      <hr style="border:0;border-top:1px solid #27343a;margin:16px 0 6px 0;">
-      <button class="sync-btn" id="exportBtn">Copy Export to Clipboard</button>
-      <button class="sync-btn" id="importBtn">Import from Clipboard</button>
     </div>
   </div>
-  <input type="file" id="photoInput" style="display:none" accept="image/*">
   <script type="module">
     import {
       sendKernelMessage,
@@ -261,13 +230,9 @@
       saveApiKey,
       setMode,
       getApiKey,
-      generatePhoto,
-      analyzePhoto,
       learnSubject,
-      addReminder,
-      exportKernelDataString,
-      importKernelDataString
-    } from './src/KernelEngine.js';
+      addReminder
+    } from './KernelEngine.js';
 
     let messages = [
       {kernel: "Welcome! How can I help you today?"}
@@ -278,7 +243,6 @@
       messages.forEach(m => {
         if(m.user) chatbox.innerHTML += `<div class="user-msg">${m.user}</div>`;
         if(m.kernel) chatbox.innerHTML += `<div class="kernel-msg">${m.kernel}</div>`;
-        if(m.photo) chatbox.innerHTML += `<div class="photo-msg kernel-msg"><img src="${m.photo}" alt="photo"></div>`;
       });
       chatbox.scrollTop = chatbox.scrollHeight;
     }
@@ -299,30 +263,6 @@
     };
 
     // --- Feature Buttons ---
-    document.getElementById("photoBtn").onclick = async function() {
-      let prompt = prompt("Photo prompt?");
-      if(!prompt) return;
-      const url = generatePhoto(prompt);
-      messages.push({kernel: "Generated photo for: "+prompt, photo: url});
-      renderChat();
-    };
-
-    document.getElementById("analyzeBtn").onclick = function() {
-      document.getElementById("photoInput").click();
-    };
-    document.getElementById("photoInput").onchange = function(e) {
-      const file = e.target.files[0];
-      if(!file) return;
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        analyzePhoto(evt.target.result, (result) => {
-          messages.push({kernel: "Photo analysis: "+JSON.stringify(result)});
-          renderChat();
-        });
-      };
-      reader.readAsDataURL(file);
-    };
-
     document.getElementById("reminderBtn").onclick = function() {
       let text = prompt("Reminder text?");
       if(!text) return;
@@ -361,29 +301,6 @@
       messages.push({kernel: "Settings updated."});
       renderChat();
     };
-
-    // --- Clipboard Sync Buttons ---
-    window.copyExportToClipboard = async function() {
-      const str = exportKernelDataString();
-      try {
-        await navigator.clipboard.writeText(str);
-        alert("Export string copied to clipboard!");
-      } catch {
-        alert("Failed to copy. Please try again.");
-      }
-    };
-    window.importFromClipboard = async function() {
-      try {
-        const str = await navigator.clipboard.readText();
-        if (!str) return alert("Clipboard is empty!");
-        const ok = importKernelDataString(str);
-        alert(ok ? "Kernel data imported from clipboard!" : "Import failed: Invalid data.");
-      } catch {
-        alert("Clipboard read failed.");
-      }
-    };
-    document.getElementById("exportBtn").onclick = window.copyExportToClipboard;
-    document.getElementById("importBtn").onclick = window.importFromClipboard;
   </script>
 </body>
 </html>
