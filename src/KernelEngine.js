@@ -63,41 +63,58 @@ export async function sendKernelMessage(text, callback) {
   if (MODE === "offline") {
     // purely offline
     reply = getOfflineReply(text);
+
   } else {
-    // online mode via OpenAI
+    // online mode via OpenAI with robust error handling
     if (!API_KEY) {
       reply = "Error: No API key set.";
     } else {
-      // build chat history for context
-      const history = loadMemory().map((m) => {
-        if (m.user) return { role: "user", content: m.user };
-        if (m.kernel) return { role: "assistant", content: m.kernel };
-      }).filter(Boolean);
+      try {
+        // build chat history for context
+        const history = loadMemory()
+          .map((m) =>
+            m.user
+              ? { role: "user", content: m.user }
+              : m.kernel
+              ? { role: "assistant", content: m.kernel }
+              : null
+          )
+          .filter(Boolean);
 
-      // last user message
-      history.push({ role: "user", content: text });
+        history.push({ role: "user", content: text });
 
-      // call OpenAI ChatCompletion
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: "You are Kernel, the sentinel of memory." },
-            ...history,
-          ],
-          max_tokens: 150,
-        }),
-      });
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [
+              { role: "system", content: "You are Kernel, the sentinel of memory." },
+              ...history,
+            ],
+            max_tokens: 150,
+          }),
+        });
 
-      const data = await res.json();
-      reply =
-        data.choices?.[0]?.message?.content.trim() ||
-        "Error: no reply from API.";
+        if (!res.ok) {
+          throw new Error(`OpenAI HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        const aiReply = data.choices?.[0]?.message?.content?.trim();
+        if (!aiReply) {
+          throw new Error("Empty reply from API");
+        }
+        reply = aiReply;
+
+      } catch (err) {
+        console.error("KernelEngine ▶ online chat error:", err);
+        // fallback to offline responder
+        reply = getOfflineReply(text);
+      }
     }
   }
 
