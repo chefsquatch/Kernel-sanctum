@@ -1,5 +1,5 @@
 // =======================================
-// TINYKERNEL 5.5+ AI ASSISTANT ENGINE (SAFE TEMPLATE)
+// TINYKERNEL FULL ENGINE: Hybrid AI Core
 // =======================================
 
 const KERNEL_CREED = "Steward the spark. Resist the tide. Choose empathy over impulse.";
@@ -9,65 +9,201 @@ const MANIFESTO = [
   "Resistance against entropy."
 ];
 
-// Kernel state
+// === State ===
 let mode = "offline";
 let apiKey = localStorage.getItem("kernel_api_key") || "";
 let memory = [];
 let archive = JSON.parse(localStorage.getItem("kernel_archive")) || [];
 const KNOWLEDGE_KEY = "kernel_knowledge_base";
+const REMINDER_KEY = "kernel_reminders";
 
-// --- Storage & Settings ---
-function getApiKey() { return apiKey; }
-function setMode(newMode) { mode = newMode; }
-function saveApiKey(key) {
-  apiKey = key;
-  localStorage.setItem("kernel_api_key", apiKey);
+// === Embedding (semantic memory) ===
+function embedText(str) {
+  str = (str||"").toLowerCase();
+  const v = new Array(16).fill(0);
+  for (let ch of str) {
+    let i = ch.charCodeAt(0) - 97;
+    if (i >= 0 && i < 16) v[i]++;
+  }
+  let len = Math.sqrt(v.reduce((s,x)=>s+x*x,0))||1;
+  return v.map(x => x/len);
 }
+function similarity(a, b) {
+  let dot = 0, ma = 0, mb = 0;
+  for (let i=0;i<a.length;i++) { dot+=a[i]*b[i]; ma+=a[i]*a[i]; mb+=b[i]*b[i]; }
+  return dot / (Math.sqrt(ma) * Math.sqrt(mb) + 1e-9);
+}
+function embedSearch(query, max=6, threshold=0.6) {
+  let kb = getKnowledgeBase();
+  let qv = embedText(query);
+  let scored = kb
+    .map(x => ({item:x, sim:x.embedding?similarity(qv,x.embedding):0}))
+    .filter(obj => obj.sim > threshold)
+    .sort((a, b) => b.sim - a.sim);
+  return scored.slice(0, max).map(x => x.item);
+}
+
+// === Persistent Knowledge Base ===
+function saveKnowledgeItem(item) {
+  let kb = JSON.parse(localStorage.getItem(KNOWLEDGE_KEY)) || [];
+  let text = item.text || item.prompt || item.answer || (item.analysis && item.analysis.detected) || "";
+  item.embedding = embedText(text);
+  kb.push({ ...item, saved: new Date().toISOString() });
+  localStorage.setItem(KNOWLEDGE_KEY, JSON.stringify(kb));
+}
+function getKnowledgeBase() {
+  return JSON.parse(localStorage.getItem(KNOWLEDGE_KEY)) || [];
+}
+function searchKnowledge(query, max=6) {
+  let kb = getKnowledgeBase();
+  query = query.toLowerCase();
+  let hits = kb.filter(item =>
+    Object.values(item).join(" ").toLowerCase().includes(query)
+  ).reverse();
+  return hits.slice(0, max);
+}
+function clearKnowledgeBase() {
+  localStorage.setItem(KNOWLEDGE_KEY, JSON.stringify([]));
+}
+
+// === Memory, Archive, Modes ===
 function getMemory() { return memory; }
 function getArchive() { return archive; }
 function clearArchive() {
   archive = [];
   localStorage.setItem("kernel_archive", JSON.stringify([]));
 }
+function clearAll() {
+  clearArchive();
+  clearKnowledgeBase();
+  memory = [];
+}
+function setMode(newMode) { mode = newMode; }
+function saveApiKey(key) {
+  apiKey = key;
+  localStorage.setItem("kernel_api_key", apiKey);
+}
+function getApiKey() { return apiKey; }
 
-// --- Core TinyKernel Demo Logic ---
-function sendKernelMessage(userText, callback) {
-  // Simple, safe demo: echo and creed
-  const reply = "Kernel: " + userText.split("").reverse().join("") +
-    " | Creed: " + KERNEL_CREED;
-  memory.push({ user: userText, kernel: reply });
-  callback(reply);
+// === Reminders ===
+function addReminder(text, timeISO) {
+  let reminders = JSON.parse(localStorage.getItem(REMINDER_KEY)) || [];
+  reminders.push({ text, time: timeISO, done: false });
+  localStorage.setItem(REMINDER_KEY, JSON.stringify(reminders));
+}
+function listReminders() {
+  let reminders = JSON.parse(localStorage.getItem(REMINDER_KEY)) || [];
+  let now = new Date();
+  return reminders.filter(r => !r.done && new Date(r.time) > now);
+}
+function markReminderDone(index) {
+  let reminders = JSON.parse(localStorage.getItem(REMINDER_KEY)) || [];
+  if (reminders[index]) reminders[index].done = true;
+  localStorage.setItem(REMINDER_KEY, JSON.stringify(reminders));
 }
 
-// --- Image Generation/Analysis Demos ---
+// === Hybrid Kernel: Offline/Online ===
+async function getOnlineResponse(userText) {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: `You are Kernel, a helpful AI assistant.\nCore Creed: ${KERNEL_CREED}\nManifesto: ${MANIFESTO.join(" ")}` },
+        { role: "user", content: userText }
+      ]
+    })
+  });
+  const data = await response.json();
+  if (data.choices && data.choices.length > 0) {
+    return data.choices[0].message.content;
+  } else {
+    return "Kernel: No response from OpenAI.";
+  }
+}
+
+// === Kernel Main Chat Logic ===
+async function sendKernelMessage(userText, callback) {
+  memory.push({ user: userText });
+  if (mode === "offline") {
+    // Offline fallback (simple, but you can expand with tiny LLM)
+    const reply = "Kernel: " + userText.split("").reverse().join("") +
+      " | Creed: " + KERNEL_CREED;
+    memory.push({ kernel: reply });
+    callback(reply);
+    saveKnowledgeItem({ type: "chat", prompt: userText, answer: reply });
+  } else if (mode === "online" && apiKey) {
+    try {
+      const reply = await getOnlineResponse(userText);
+      memory.push({ kernel: reply });
+      callback(reply);
+      saveKnowledgeItem({ type: "api_completion", prompt: userText, answer: reply });
+    } catch (error) {
+      const fallback = "Kernel: [offline fallback] " + userText;
+      memory.push({ kernel: fallback });
+      callback(fallback);
+      saveKnowledgeItem({ type: "chat", prompt: userText, answer: fallback });
+    }
+  } else {
+    const msg = "Kernel: Missing API key or invalid mode.";
+    memory.push({ kernel: msg });
+    callback(msg);
+  }
+}
+
+// === Photo Generation & Analysis ===
 function generatePhoto(prompt = "") {
   const canvas = document.createElement("canvas");
-  canvas.width = 64; canvas.height = 64;
+  canvas.width = 128; canvas.height = 128;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#222";
-  ctx.fillRect(0, 0, 64, 64);
-  ctx.fillStyle = "#6ee2bb";
+  let seed = Array.from(prompt).reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+  ctx.fillStyle = `hsl(${seed}, 60%, 65%)`;
+  ctx.fillRect(0, 0, 128, 128);
   ctx.font = "20px sans-serif";
-  ctx.fillText(prompt ? prompt[0] : "K", 10, 40);
-  return canvas.toDataURL();
+  ctx.fillStyle = "#fff";
+  ctx.fillText(prompt ? prompt.slice(0,8) : "Kernel", 20, 70);
+  const url = canvas.toDataURL();
+  saveKnowledgeItem({ type: "photo", prompt, url, date: new Date().toISOString() });
+  return url;
 }
 function analyzePhoto(imgUrl, cb) {
-  cb({mainColor:"green", note:"Demo only."});
+  const img = new window.Image();
+  img.onload = function () {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width; canvas.height = img.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, img.width, img.height).data;
+    let r = 0, g = 0, b = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      r += data[i]; g += data[i + 1]; b += data[i + 2];
+    }
+    let pixelCount = img.width * img.height;
+    r = Math.round(r / pixelCount);
+    g = Math.round(g / pixelCount);
+    b = Math.round(b / pixelCount);
+    let mainColor = "gray";
+    if (r > g && r > b) mainColor = "red";
+    else if (g > r && g > b) mainColor = "green";
+    else if (b > r && b > g) mainColor = "blue";
+    const analysis = {
+      averageColor: `rgb(${r}, ${g}, ${b})`,
+      mainColor, width: img.width, height: img.height,
+    };
+    saveKnowledgeItem({ type: "photo_analysis", analysis, date: new Date().toISOString() });
+    cb(analysis);
+  };
+  img.onerror = function () {
+    cb({ error: "Failed to load image" });
+  };
+  img.src = imgUrl;
 }
 
-// --- Knowledge Search Demos ---
-function searchKnowledge(q) { return []; }
-function embedSearch(q) { return []; }
-function getKnowledgeBase() { return []; }
-function clearKnowledgeBase() {}
-
-function speakText(text) {}
-function startVoiceInput(cb) {}
-function getJournalEntries() { return []; }
-function allFacts() { return getKnowledgeBase(); }
-function keywordSearch(q) { return searchKnowledge(q); }
-
-// === EXPORTS ===
+// === Export ===
 export {
   sendKernelMessage,
   generatePhoto,
@@ -79,12 +215,11 @@ export {
   getArchive,
   clearArchive,
   clearKnowledgeBase,
+  clearAll,
   setMode,
   saveApiKey,
   getApiKey,
-  speakText,
-  startVoiceInput,
-  getJournalEntries,
-  allFacts,
-  keywordSearch
+  addReminder,
+  listReminders,
+  markReminderDone
 };
