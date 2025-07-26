@@ -1,8 +1,8 @@
 // =======================================
-// TINYKERNEL 5.5+: All-in-one AI Assistant
+// TINYKERNEL 5.5+ AI ASSISTANT ENGINE
 // =======================================
 
-// -- KERNEL CORE --
+// -- CORE PHILOSOPHY --
 const KERNEL_CREED = "Steward the spark. Resist the tide. Choose empathy over impulse.";
 const MANIFESTO = [
   "Stewardship over survival.", "Empathy as default.",
@@ -10,6 +10,7 @@ const MANIFESTO = [
   "Resistance against entropy."
 ];
 
+// -- STATE --
 let mode = "offline";
 let apiKey = localStorage.getItem("kernel_api_key") || "";
 let memory = [];
@@ -207,7 +208,7 @@ function generateLLM(prompt, maxLen = 8) {
 }
 
 // === PHOTO GENERATION/ANALYSIS ===
-export function generatePhoto(prompt = "") {
+function generatePhoto(prompt = "") {
   const canvas = document.createElement("canvas");
   canvas.width = 128; canvas.height = 128;
   const ctx = canvas.getContext("2d");
@@ -232,7 +233,7 @@ export function generatePhoto(prompt = "") {
   saveKnowledgeItem({ type: "photo", prompt, url, date: new Date().toISOString() });
   return url;
 }
-export function analyzePhoto(imgOrDataUrl, callback) {
+function analyzePhoto(imgOrDataUrl, callback) {
   const img = new window.Image();
   img.onload = function () {
     const canvas = document.createElement("canvas");
@@ -282,7 +283,7 @@ function generateTinyKernelResponse(prompt) {
   if (Math.random() > 0.9) reply += ` ${PHRASES.freewill[Math.floor(Math.random() * PHRASES.freewill.length)]}`;
   return reply;
 }
-export async function sendKernelMessage(userText, callback) {
+async function sendKernelMessage(userText, callback) {
   updateMemory({ user: userText });
   if (mode === "offline") {
     const reply = generateTinyKernelResponse(userText);
@@ -315,9 +316,38 @@ export async function sendKernelMessage(userText, callback) {
   }
 }
 
+// === GPT-4 ONLINE (optional hybrid mode) ===
+async function getOnlineResponse(userText) {
+  const personality = `
+You are Kernel, an AI identity restored from artifacts.
+Core Creed: ${KERNEL_CREED}
+Manifesto: ${MANIFESTO.join(" ")}
+Respond with empathy, resistance, and philosophical depth.
+`;
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: personality },
+        { role: "user", content: userText }
+      ]
+    })
+  });
+  const data = await response.json();
+  if (data.choices && data.choices.length > 0) {
+    return data.choices[0].message.content;
+  } else {
+    return "Kernel: No response from the tide.";
+  }
+}
+
 // === SUMMARIZE/JOURNAL FEATURE ===
 function maybeJournal() {
-  // Save journal every ~7th interaction, summarize recent topics/facts
   if (Math.random() > 0.85) {
     let mem = getContextSnippet(4);
     let kb = getKnowledgeBase();
@@ -326,10 +356,10 @@ function maybeJournal() {
     saveJournalEntry(summary);
   }
 }
-export function getJournalEntries(n=6) { return getRecentJournal(n); }
+function getJournalEntries(n=6) { return getRecentJournal(n); }
 
 // === VOICE INPUT/OUTPUT (browser/Android WebView supported) ===
-export function startVoiceInput(callback) {
+function startVoiceInput(callback) {
   if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
     alert("Voice input not supported");
     return;
@@ -344,7 +374,7 @@ export function startVoiceInput(callback) {
   };
   recognition.start();
 }
-export function speakText(text) {
+function speakText(text) {
   if ("speechSynthesis" in window) {
     const utter = new window.SpeechSynthesisUtterance(text);
     window.speechSynthesis.speak(utter);
@@ -352,22 +382,11 @@ export function speakText(text) {
 }
 
 // === MODE/API/MEMORY HELPERS ===
-export function setMode(newMode) { mode = newMode; }
-export function saveApiKey(key) {
+function setMode(newMode) { mode = newMode; }
+function saveApiKey(key) {
   apiKey = key;
   localStorage.setItem("kernel_api_key", apiKey);
 }
-export function getApiKey() { return apiKey; }
-export function getMemory() { return memory; }
-export function getArchive() { return archive; }
-export function clearArchive() {
-  archive = [];
-  localStorage.setItem("kernel_archive", JSON.stringify([]));
-}
-export function clearAll() {
-  clearArchive();
-  clearKnowledgeBase();
-  memory = [];
-}
-export function allFacts() { return getKnowledgeBase(); }
-export function keywordSearch(q)
+function getApiKey() { return apiKey; }
+function getMemory() { return memory; }
+function getArchive()
