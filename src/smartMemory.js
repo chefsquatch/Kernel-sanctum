@@ -14,7 +14,7 @@ export async function saveMemory(messages) {
   try {
     localStorage.setItem("kernelMemory", JSON.stringify(messages.slice(-500)));
   } catch {
-    // ignore storage errors silently
+    // ignore silently
   }
 }
 
