@@ -1,4 +1,5 @@
 // src/KernelEngine.js
+
 import {
   loadMemory,
   appendMemory,
@@ -12,19 +13,20 @@ import {
 let API_KEY = localStorage.getItem("kernelApiKey") || "";
 let MODE    = localStorage.getItem("kernelMode")   || "offline";
 
-export function setMode(m) {
-  MODE = m;
-  localStorage.setItem("kernelMode", m);
-}
-export function getMode() {
-  return MODE;
-}
 export function saveApiKey(key) {
   API_KEY = key;
   localStorage.setItem("kernelApiKey", key);
 }
 export function getApiKey() {
   return API_KEY;
+}
+
+export function setMode(m) {
+  MODE = m;
+  localStorage.setItem("kernelMode", m);
+}
+export function getMode() {
+  return MODE;
 }
 
 // ——— Offline-only reply logic ———
@@ -65,9 +67,11 @@ export async function sendKernelMessage(text, callback) {
   let reply;
 
   if (MODE === "offline") {
+    // purely offline
     reply = getOfflineReply(text);
 
   } else {
+    // online mode
     if (!API_KEY) {
       reply = "Error: No API key set.";
     } else {
@@ -110,13 +114,12 @@ export async function sendKernelMessage(text, callback) {
         const data = await res.json();
         console.log("▶ OpenAI JSON:", data);
         const aiReply = data.choices?.[0]?.message?.content?.trim();
-        if (!aiReply) {
-          throw new Error("Empty reply from API");
-        }
+        if (!aiReply) throw new Error("Empty reply");
         reply = aiReply;
 
       } catch (err) {
         console.error("KernelEngine ▶ online chat error:", err);
+        // fallback
         reply = getOfflineReply(text);
       }
     }
@@ -126,14 +129,13 @@ export async function sendKernelMessage(text, callback) {
   callback(reply);
 }
 
-// ——— Teach Kernel a subject offline ———
+// ——— Teach Kernel a new subject offline ———
 export async function learnSubject(subject) {
   subject = subject.trim();
   if (!subject) return "No subject supplied.";
 
   const existing = getLearnedFacts(subject);
-  if (existing)
-    return `Already learned about "${subject}".`;
+  if (existing) return `Already learned about "${subject}".`;
 
   let summary = `Core facts about ${subject}: [expand as needed]`;
   if (subject.toLowerCase() === "philosophy") {
