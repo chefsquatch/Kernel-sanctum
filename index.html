@@ -197,7 +197,6 @@
       <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
     </div>
     <div class="features-bar">
-      <button class="feature-btn" id="reminderBtn" title="Remind Me">Remind</button>
       <button class="feature-btn" id="learnBtn" title="Learn Subject">Learn</button>
     </div>
     <div class="chatbox" id="chatbox"></div>
@@ -224,15 +223,13 @@
     </div>
   </div>
   <script type="module">
-    // Import from src/KernelEngine.js (match your project layout!)
     import {
       sendKernelMessage,
       getMemory,
       saveApiKey,
       setMode,
       getApiKey,
-      learnSubject,
-      addReminder
+      learnSubject
     } from './src/KernelEngine.js';
 
     let messages = [
@@ -264,16 +261,6 @@
     };
 
     // --- Feature Buttons ---
-    document.getElementById("reminderBtn").onclick = function() {
-      let text = prompt("Reminder text?");
-      if(!text) return;
-      let time = prompt("When? (YYYY-MM-DDTHH:MM, e.g. 2024-07-27T18:00)");
-      if(!time) return;
-      addReminder(text, time);
-      messages.push({kernel: "Reminder set for "+time+": "+text});
-      renderChat();
-    };
-
     document.getElementById("learnBtn").onclick = async function() {
       let subj = prompt("What subject should I learn?");
       if(!subj) return;
