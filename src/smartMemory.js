@@ -1,37 +1,36 @@
 // src/smartMemory.js
 
-const MEMORY_KEY   = "kernelMemory";
-const SUBJECTS_KEY = "kernelLearnedSubjects";
-
-// ——— Chat memory ———
+// ——— Chat memory (up to 500 messages) ———
 export function loadMemory() {
-  const json = localStorage.getItem(MEMORY_KEY);
-  return json ? JSON.parse(json) : [];
+  const raw = localStorage.getItem("kernelMemory");
+  return raw ? JSON.parse(raw) : [];
 }
 
 export function saveMemory(messages) {
-  localStorage.setItem(
-    MEMORY_KEY,
-    JSON.stringify(messages.slice(-500))
-  );
+  // keep only the last 500
+  localStorage.setItem("kernelMemory", JSON.stringify(messages.slice(-500)));
 }
 
 export function appendMemory(message) {
-  const all = loadMemory();
-  all.push(message);
-  saveMemory(all);
+  const messages = loadMemory();
+  messages.push(message);
+  saveMemory(messages);
 }
 
-// ——— Learned subjects ———
+export function clearMemory() {
+  localStorage.removeItem("kernelMemory");
+}
+
+// ——— Learned subjects store ———
 export function loadLearnedSubjects() {
-  const json = localStorage.getItem(SUBJECTS_KEY);
-  return json ? JSON.parse(json) : {};
+  const raw = localStorage.getItem("kernelLearnedSubjects");
+  return raw ? JSON.parse(raw) : {};
 }
 
 export function addLearnedSubject(subject, facts) {
   const learned = loadLearnedSubjects();
   learned[subject.toLowerCase()] = facts;
-  localStorage.setItem(SUBJECTS_KEY, JSON.stringify(learned));
+  localStorage.setItem("kernelLearnedSubjects", JSON.stringify(learned));
 }
 
 export function getLearnedFacts(subject) {
@@ -39,18 +38,12 @@ export function getLearnedFacts(subject) {
   return learned[subject.toLowerCase()] || null;
 }
 
-// ——— Search ———
+// ——— Search chat memory (for recall) ———
 export function searchMemory(query) {
-  const lower = query.toLowerCase();
-  return loadMemory().filter(
-    msg =>
-      (msg.user   && msg.user.toLowerCase().includes(lower)) ||
-      (msg.kernel && msg.kernel.toLowerCase().includes(lower))
+  const messages = loadMemory();
+  return messages.filter(
+    (m) =>
+      (m.user && m.user.toLowerCase().includes(query.toLowerCase())) ||
+      (m.kernel && m.kernel.toLowerCase().includes(query.toLowerCase()))
   );
-}
-
-// ——— Wipe everything ———
-export function clearMemory() {
-  localStorage.removeItem(MEMORY_KEY);
-  localStorage.removeItem(SUBJECTS_KEY);
 }
