@@ -1,6 +1,7 @@
 import { getItem, setItem, removeItem } from "./storage.js";
 
 const MEMORY_KEY = "kernelMemory";
+const SUBJECTS_KEY = "kernelLearnedSubjects";
 const MAX_MEMORY = 500;
 
 export async function loadMemory() {
@@ -32,4 +33,27 @@ export async function searchMemory(query, limit = 20) {
         (m.kernel && m.kernel.toLowerCase().includes(lower))
     )
     .slice(-limit);
+}
+
+// NEW: Learned subjects system
+export async function loadLearnedSubjects() {
+  const raw = await getItem(SUBJECTS_KEY);
+  return raw ? JSON.parse(raw) : {};
+}
+
+export async function addLearnedSubject(subject, facts) {
+  const learned = await loadLearnedSubjects();
+  learned[subject.toLowerCase()] = facts;
+  await setItem(SUBJECTS_KEY, JSON.stringify(learned));
+}
+
+export async function findLearnedFact(query) {
+  const learned = await loadLearnedSubjects();
+  const q = query.toLowerCase();
+  for (const [subject, facts] of Object.entries(learned)) {
+    if (q.includes(subject)) {
+      return `Based on what I learned about ${subject}:\n${facts}`;
+    }
+  }
+  return null;
 }
