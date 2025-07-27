@@ -35,7 +35,7 @@ export async function searchMemory(query, limit = 20) {
     .slice(-limit);
 }
 
-// NEW: Learned subjects system
+// Learned subjects system
 export async function loadLearnedSubjects() {
   const raw = await getItem(SUBJECTS_KEY);
   return raw ? JSON.parse(raw) : {};
