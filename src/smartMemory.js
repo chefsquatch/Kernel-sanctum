@@ -25,5 +25,11 @@ export async function clearMemory() {
 export async function searchMemory(query, limit = 20) {
   const msgs = await loadMemory();
   const lower = query.toLowerCase();
-  return msgs.filter(m => (m.user && m.user.toLowerCase().includes(lower)) || (m.kernel && m.kernel.toLowerCase().includes(lower))).slice(-limit);
+  return msgs
+    .filter(
+      (m) =>
+        (m.user && m.user.toLowerCase().includes(lower)) ||
+        (m.kernel && m.kernel.toLowerCase().includes(lower))
+    )
+    .slice(-limit);
 }
