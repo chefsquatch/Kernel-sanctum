@@ -19,21 +19,19 @@ export async function setMode(m) {
 export async function sendKernelMessage(text) {
   await appendMemory({ user: text });
 
-  // 1. Check learned subjects first
+  // Check if learned fact exists
   const learnedReply = await findLearnedFact(text);
   if (learnedReply) {
     await appendMemory({ kernel: learnedReply });
     return learnedReply;
   }
 
-  // 2. Offline mode fallback
   if (MODE === "offline") {
     const reply = "Offline response: " + text;
     await appendMemory({ kernel: reply });
     return reply;
   }
 
-  // 3. Online API call
   if (MODE === "online" && API_KEY) {
     try {
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -63,7 +61,6 @@ export async function sendKernelMessage(text) {
   return "Mode or API key not set.";
 }
 
-// Learn feature
 export async function learnSubject(subject) {
   const facts = prompt(`Enter details about ${subject}`);
   if (!facts) return "Learning canceled.";
