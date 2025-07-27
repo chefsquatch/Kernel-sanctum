@@ -44,10 +44,10 @@
     import {
       sendKernelMessage,
       learnSubject,
-      setMode,
       saveApiKey,
       getApiKey,
-      getMode
+      setMode,
+      getMode,
     } from "./src/KernelEngine.js";
 
     const chatbox = document.getElementById("chatbox");
@@ -108,10 +108,10 @@
     document.getElementById("closeSettings").onclick = () => {
       document.getElementById("settingsModal").classList.remove("active");
     };
-    document.getElementById("saveSettings").onclick = (e) => {
+    document.getElementById("saveSettings").onclick = async (e) => {
       e.preventDefault();
-      saveApiKey(document.getElementById("apiKeyInput").value);
-      setMode(document.getElementById("modeSelect").value);
+      await saveApiKey(document.getElementById("apiKeyInput").value);
+      await setMode(document.getElementById("modeSelect").value);
       messages.push({ kernel: "Settings updated." });
       renderChat();
       document.getElementById("settingsModal").classList.remove("active");
