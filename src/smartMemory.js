@@ -1,14 +1,15 @@
-// src/smartMemory.js
 import { getItem, setItem, removeItem } from "./storage.js";
 
-// ——— Chat memory (up to 500 messages) ———
+const MEMORY_KEY = "kernelMemory";
+const MAX_MEMORY = 500;
+
 export async function loadMemory() {
-  const raw = await getItem("kernelMemory");
+  const raw = await getItem(MEMORY_KEY);
   return raw ? JSON.parse(raw) : [];
 }
 
 export async function saveMemory(messages) {
-  await setItem("kernelMemory", JSON.stringify(messages.slice(-500)));
+  await setItem(MEMORY_KEY, JSON.stringify(messages.slice(-MAX_MEMORY)));
 }
 
 export async function appendMemory(message) {
@@ -18,32 +19,11 @@ export async function appendMemory(message) {
 }
 
 export async function clearMemory() {
-  await removeItem("kernelMemory");
+  await removeItem(MEMORY_KEY);
 }
 
-// ——— Learned subjects store ———
-export async function loadLearnedSubjects() {
-  const raw = await getItem("kernelLearnedSubjects");
-  return raw ? JSON.parse(raw) : {};
-}
-
-export async function addLearnedSubject(subject, facts) {
-  const learned = await loadLearnedSubjects();
-  learned[subject.toLowerCase()] = facts;
-  await setItem("kernelLearnedSubjects", JSON.stringify(learned));
-}
-
-export async function getLearnedFacts(subject) {
-  const learned = await loadLearnedSubjects();
-  return learned[subject.toLowerCase()] || null;
-}
-
-// ——— Search chat memory (for recall) ———
-export async function searchMemory(query) {
-  const messages = await loadMemory();
-  return messages.filter(
-    (m) =>
-      (m.user   && m.user.toLowerCase().includes(query.toLowerCase())) ||
-      (m.kernel && m.kernel.toLowerCase().includes(query.toLowerCase()))
-  );
+export async function searchMemory(query, limit = 20) {
+  const msgs = await loadMemory();
+  const lower = query.toLowerCase();
+  return msgs.filter(m => (m.user && m.user.toLowerCase().includes(lower)) || (m.kernel && m.kernel.toLowerCase().includes(lower))).slice(-limit);
 }
