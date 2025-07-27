@@ -1,4 +1,4 @@
-import { appendMemory } from "./smartMemory.js";
+import { appendMemory, addLearnedSubject, findLearnedFact } from "./smartMemory.js";
 
 let API_KEY = "";
 let MODE = "offline";
@@ -19,12 +19,21 @@ export async function setMode(m) {
 export async function sendKernelMessage(text) {
   await appendMemory({ user: text });
 
+  // 1. Check learned subjects first
+  const learnedReply = await findLearnedFact(text);
+  if (learnedReply) {
+    await appendMemory({ kernel: learnedReply });
+    return learnedReply;
+  }
+
+  // 2. Offline mode fallback
   if (MODE === "offline") {
-    const reply = "Offline mode response: " + text;
+    const reply = "Offline response: " + text;
     await appendMemory({ kernel: reply });
     return reply;
   }
 
+  // 3. Online API call
   if (MODE === "online" && API_KEY) {
     try {
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -54,8 +63,10 @@ export async function sendKernelMessage(text) {
   return "Mode or API key not set.";
 }
 
+// Learn feature
 export async function learnSubject(subject) {
-  const reply = `Learned about: ${subject}`;
-  await appendMemory({ kernel: reply });
-  return reply;
+  const facts = prompt(`Enter details about ${subject}`);
+  if (!facts) return "Learning canceled.";
+  await addLearnedSubject(subject, facts);
+  return `I have learned about ${subject}.`;
 }
