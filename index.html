@@ -38,6 +38,7 @@
       padding: 8px;
       margin-bottom: 8px;
       border-radius: 6px;
+      white-space: pre-wrap;
     }
     .user-msg {
       background: #2563eb;
@@ -50,7 +51,7 @@
       display: flex;
       gap: 8px;
     }
-    input {
+    input, select {
       flex: 1;
       padding: 10px;
       border: none;
@@ -62,6 +63,7 @@
       color: white;
       border: none;
       border-radius: 4px;
+      cursor: pointer;
     }
     .modal {
       position: fixed;
@@ -80,6 +82,10 @@
       border-radius: 6px;
       width: 90%;
       max-width: 400px;
+    }
+    .modal-box input, .modal-box select {
+      width: 100%;
+      margin-bottom: 10px;
     }
   </style>
 </head>
