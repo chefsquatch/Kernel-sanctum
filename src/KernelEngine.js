@@ -3,10 +3,18 @@ import { appendMemory } from "./smartMemory.js";
 let API_KEY = "";
 let MODE = "offline";
 
-export function getApiKey() { return API_KEY; }
-export async function saveApiKey(key) { API_KEY = key; }
-export function getMode() { return MODE; }
-export async function setMode(m) { MODE = m; }
+export function getApiKey() {
+  return API_KEY;
+}
+export async function saveApiKey(key) {
+  API_KEY = key;
+}
+export function getMode() {
+  return MODE;
+}
+export async function setMode(m) {
+  MODE = m;
+}
 
 export async function sendKernelMessage(text) {
   await appendMemory({ user: text });
@@ -23,16 +31,20 @@ export async function sendKernelMessage(text) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${API_KEY}`
+          Authorization: `Bearer ${API_KEY}`,
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [{ role: "system", content: "You are Kernel AI." }, { role: "user", content: text }]
-        })
+          messages: [
+            { role: "system", content: "You are Kernel AI." },
+            { role: "user", content: text },
+          ],
+        }),
       });
 
       const data = await res.json();
-      const reply = data.choices?.[0]?.message?.content || "No response from API.";
+      const reply =
+        data.choices?.[0]?.message?.content || "No response from API.";
       await appendMemory({ kernel: reply });
       return reply;
     } catch (err) {
