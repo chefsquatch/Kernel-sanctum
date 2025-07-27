@@ -4,9 +4,87 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kernel AI – Android</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #111;
+      color: #fff;
+    }
+    .container {
+      max-width: 480px;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 10px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: #222;
+    }
+    .chatbox {
+      flex: 1;
+      overflow-y: auto;
+      background: #1e1e1e;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .msg {
+      padding: 8px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+    }
+    .user-msg {
+      background: #2563eb;
+      text-align: right;
+    }
+    .kernel-msg {
+      background: #333;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+    input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-box {
+      background: #222;
+      padding: 20px;
+      border-radius: 6px;
+      width: 90%;
+      max-width: 400px;
+    }
+  </style>
 </head>
-<body class="bg-gray-900 text-white font-sans">
-  <div id="root"></div>
+<body>
+  <div id="root" class="container"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
