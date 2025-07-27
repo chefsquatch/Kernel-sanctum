@@ -2,120 +2,54 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Kernel AI – Android Demo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    /* (your existing CSS here) */
-  </style>
+  <title>Kernel AI – Android</title>
+  <link href="/dist/output.css" rel="stylesheet" />
 </head>
-<body>
-  <div class="kernel-container">
-    <div class="header">
-      <span class="title">Kernel AI</span>
-      <button class="settings-btn" id="settingsBtn">&#9881;</button>
-    </div>
-    <div class="features-bar">
-      <button class="feature-btn" id="learnBtn">Learn</button>
-      <div id="loadingSpinner" class="loading-spinner"></div>
-    </div>
-    <div id="chatbox" class="chatbox"></div>
-    <form id="chat-form" class="input-row">
-      <input id="input" autocomplete="off" placeholder="Type a message..." />
-      <button type="submit" class="send-btn">Send</button>
-    </form>
-  </div>
+<body class="bg-gray-900 text-white font-sans flex flex-col min-h-screen">
 
-  <div id="settingsModal" class="settings-modal">
-    <div class="settings-box">
-      <button class="close-settings" id="closeSettings">&times;</button>
-      <h3>Settings</h3>
-      <label>API Key:</label>
-      <input type="password" id="apiKeyInput" placeholder="OpenAI API Key" />
-      <label>Mode:</label>
-      <select id="modeSelect">
+  <!-- HEADER -->
+  <header class="flex items-center justify-between p-4 bg-gray-800 shadow">
+    <h1 class="text-2xl font-bold">Kernel AI</h1>
+    <button id="settingsBtn" class="text-xl p-2 hover:bg-gray-700 rounded">⚙️</button>
+  </header>
+
+  <!-- MAIN CHAT -->
+  <main class="flex flex-col flex-1 max-w-lg w-full mx-auto p-4">
+    <div id="chatbox" class="flex-1 overflow-y-auto mb-4 space-y-2 p-2 bg-gray-800 rounded shadow">
+      <!-- Chat messages -->
+    </div>
+
+    <!-- INPUT -->
+    <form id="chat-form" class="flex gap-2">
+      <input id="input" placeholder="Type a message..." class="flex-1 p-3 bg-gray-700 rounded text-white" />
+      <button class="bg-blue-600 px-4 rounded hover:bg-blue-500">Send</button>
+    </form>
+  </main>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center">
+    <div class="bg-gray-800 p-6 rounded shadow max-w-sm w-full">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold">Settings</h3>
+        <button id="closeSettings" class="text-2xl">&times;</button>
+      </div>
+      <label class="block mb-2">API Key:</label>
+      <input type="password" id="apiKeyInput" placeholder="OpenAI API Key" class="w-full p-2 mb-4 rounded bg-gray-700 text-white" />
+      
+      <label class="block mb-2">Mode:</label>
+      <select id="modeSelect" class="w-full p-2 mb-4 rounded bg-gray-700 text-white">
         <option value="offline">Offline</option>
         <option value="online">Online (API)</option>
       </select>
-      <button class="feature-btn save-btn" id="saveSettings">Save</button>
+
+      <div class="flex justify-between">
+        <button id="saveSettings" class="bg-green-600 px-4 py-2 rounded hover:bg-green-500">Save</button>
+        <button id="clearMemory" class="bg-red-600 px-4 py-2 rounded hover:bg-red-500">Clear Memory</button>
+      </div>
     </div>
   </div>
 
-  <script type="module">
-    import {
-      sendKernelMessage,
-      learnSubject,
-      saveApiKey,
-      getApiKey,
-      setMode,
-      getMode,
-    } from "./src/KernelEngine.js";
-
-    const chatbox = document.getElementById("chatbox");
-    const inputEl = document.getElementById("input");
-    const spinner = document.getElementById("loadingSpinner");
-    let messages = [{ kernel: "Welcome! How can I help you today?" }];
-
-    function renderChat() {
-      chatbox.innerHTML = "";
-      messages.forEach((m) => {
-        const div = document.createElement("div");
-        div.className = m.user ? "user-msg" : "kernel-msg";
-        div.textContent = m.user || m.kernel;
-        chatbox.appendChild(div);
-      });
-      chatbox.scrollTop = chatbox.scrollHeight;
-    }
-
-    renderChat();
-
-    // — send chat —
-    document.getElementById("chat-form").onsubmit = (e) => {
-      e.preventDefault();
-      const text = inputEl.value.trim();
-      if (!text) return;
-      messages.push({ user: text });
-      renderChat();
-      inputEl.value = "";
-      spinner.style.display = "inline-block";
-
-      sendKernelMessage(text, (reply) => {
-        messages.push({ kernel: reply });
-        renderChat();
-        spinner.style.display = "none";
-      });
-    };
-
-    // — learn subject —
-    document.getElementById("learnBtn").onclick = async () => {
-      const subj = prompt("What subject should I learn?");
-      if (!subj) return;
-      messages.push({ user: "learn subject: " + subj });
-      renderChat();
-      spinner.style.display = "inline-block";
-
-      const reply = await learnSubject(subj);
-      messages.push({ kernel: reply });
-      renderChat();
-      spinner.style.display = "none";
-    };
-
-    // — settings modal —
-    document.getElementById("settingsBtn").onclick = () => {
-      document.getElementById("apiKeyInput").value = getApiKey();
-      document.getElementById("modeSelect").value = getMode();
-      document.getElementById("settingsModal").classList.add("active");
-    };
-    document.getElementById("closeSettings").onclick = () => {
-      document.getElementById("settingsModal").classList.remove("active");
-    };
-    document.getElementById("saveSettings").onclick = async (e) => {
-      e.preventDefault();
-      await saveApiKey(document.getElementById("apiKeyInput").value);
-      await setMode(document.getElementById("modeSelect").value);
-      messages.push({ kernel: "Settings updated." });
-      renderChat();
-      document.getElementById("settingsModal").classList.remove("active");
-    };
-  </script>
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>
